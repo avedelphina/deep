@@ -1,0 +1,38 @@
+name: Mirror to GitHub
+
+# One-way mirror: Gitea (git.ocean) is authoritative, GitHub only receives.
+# The internal repo never depends on the public one; this job has no reverse path.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-github
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror heads and tags to GitHub
+        env:
+          GH_MIRROR_TOKEN: ${{ secrets.GH_MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          SRC="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          DST="https://x-access-token:${GH_MIRROR_TOKEN}@github.com/avedelphina/${REPO_NAME}.git"
+
+          git clone --bare --quiet "$SRC" repo.git
+          cd repo.git
+
+          # Explicit refspecs, not --mirror: Gitea publishes refs/pull/* for PRs
+          # and GitHub treats those as read-only, which would fail the whole push.
+          git push --force --prune "$DST" \
+            '+refs/heads/*:refs/heads/*' \
+            '+refs/tags/*:refs/tags/*'
+
+          echo "mirrored ${GITHUB_REPOSITORY} -> github.com/avedelphina/${REPO_NAME}"
+          git ls-remote "$DST" main | cut -c1-12 | sed 's/^/github main: /'
