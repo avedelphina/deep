@@ -1,0 +1,44 @@
+{
+  "id": "infrastructure-availability",
+  "version": 1,
+  "owner": "infrastructure-operator",
+  "class": "infrastructure",
+  "status": "proposed",
+  "outcome": "The DEEP infrastructure is secure, reachable, recoverable, sufficiently resourced, and capable of supporting its declared services.",
+  "scope": {
+    "asset_group": "operator-owned-infrastructure",
+    "includes": ["hosts", "operating_systems", "networking", "dns", "access_paths", "storage", "backups", "certificates"],
+    "excludes": ["container_image_lifecycle", "compose_stacks", "media_user_outcomes"]
+  },
+  "health_dimensions": [
+    {"id": "reachability", "measurement": "approved_access_probe", "severity": "critical"},
+    {"id": "os_freshness", "measurement": "package_manager_and_security_update_probe", "severity": "high"},
+    {"id": "service_health", "measurement": "failed_service_probe", "severity": "high"},
+    {"id": "capacity", "measurement": "cpu_memory_swap_disk_inode_probe", "severity": "high"},
+    {"id": "dns", "measurement": "critical_name_resolution_probe", "severity": "critical"},
+    {"id": "identity", "measurement": "certificate_and_machine_identity_probe", "severity": "high"},
+    {"id": "recoverability", "measurement": "backup_freshness_and_restore_evidence_probe", "severity": "critical"},
+    {"id": "drift", "measurement": "declared_state_comparison", "severity": "medium"}
+  ],
+  "thresholds": {
+    "disk_free_percent_min": 15,
+    "certificate_warning_days": 30,
+    "backup_max_age_hours": 26,
+    "maintenance_stale_after_hours": 26,
+    "critical_probe_max_age_minutes": 30
+  },
+  "automation": {
+    "sweep": {"id": "infrastructure.sweep", "schedule": "every 30m", "timeout_seconds": 600, "lock": "one-per-asset-group", "verification": "fresh_probe_set"},
+    "safe_repairs": ["os.security_updates", "certificate.renew", "backup.retry", "service.restart_approved", "drift.reconcile_approved"]
+  },
+  "escalation": {
+    "owner": "infrastructure-operator",
+    "blocked_after_hours": 24,
+    "critical_after_minutes": 30,
+    "required_fields": ["reason", "unblock_action", "unblock_owner", "deadline", "evidence_ref"]
+  },
+  "evidence": {
+    "required_fields": ["intent_id", "intent_version", "target", "operation", "actor", "started_at", "finished_at", "before", "after", "probes", "result"],
+    "results": ["fulfilled", "degraded", "blocked", "failed"]
+  }
+}

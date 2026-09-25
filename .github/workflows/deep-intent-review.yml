@@ -1,0 +1,49 @@
+name: DEEP Intent Review
+
+on:
+  pull_request:
+    paths:
+      - 'intents/**'
+      - 'scripts/validate_infrastructure_intent.py'
+      - 'scripts/validate_intent_catalog.py'
+      - 'docs/40-governance/master-intent.md'
+      - 'docs/40-governance/infrastructure-operations-workflow.md'
+      - '.github/workflows/deep-intent-review.yml'
+    branches: [main]
+  push:
+    paths:
+      - 'intents/**'
+      - 'scripts/validate_infrastructure_intent.py'
+      - 'scripts/validate_intent_catalog.py'
+      - 'docs/40-governance/master-intent.md'
+      - 'docs/40-governance/infrastructure-operations-workflow.md'
+      - '.github/workflows/deep-intent-review.yml'
+    branches: [main]
+
+jobs:
+  validate-infrastructure-intent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate infrastructure intent
+        run: python3 scripts/validate_infrastructure_intent.py intents/infrastructure.json
+      - name: Validate intent catalog
+        run: python3 scripts/validate_intent_catalog.py intents/intent-catalog.json
+      - name: Check documentation references
+        run: |
+          grep -q 'intents/infrastructure.json' docs/40-governance/infrastructure-operations-workflow.md
+          grep -q 'infrastructure-availability' docs/40-governance/infrastructure-operations-workflow.md
+          git diff --check
+
+  impact-summary:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarise affected infrastructure contract
+        run: |
+          echo 'Changed infrastructure intent or fulfilment documents:'
+          git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" -- \
+            intents docs/40-governance/infrastructure-operations-workflow.md \
+            scripts/validate_infrastructure_intent.py .github/workflows/deep-intent-review.yml
+          echo 'The infrastructure-class operator is the operational owner and required reviewer for intent changes.'

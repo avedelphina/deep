@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "catalog_id": "deep-example-intents",
+  "status": "proposed",
+  "entries": [
+    {
+      "id": "master",
+      "kind": "master",
+      "status": "draft",
+      "outcome": "The example estate remains a sovereign, useful, private, and cost-disciplined small-scale cloud.",
+      "owner": "architect",
+      "parent_ids": [],
+      "source": "docs/40-governance/master-intent.md"
+    },
+    {
+      "id": "I1",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "The organisation has a stable self-hosted platform that is controlled end to end.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i1"
+    },
+    {
+      "id": "I2",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "Organisational data has a known home, classification, retention idea, and restore path.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i2"
+    },
+    {
+      "id": "I3",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "Personal and organisational activity is not exposed as a routine price of hosted features.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i3"
+    },
+    {
+      "id": "I4",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "Chosen service classes provide useful, replaceable, cloud-like day-to-day utility.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i4"
+    },
+    {
+      "id": "I5",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "Security is commensurate with the estate: least privilege, patch hygiene, segmented access, and contained blast radius.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i5"
+    },
+    {
+      "id": "I6",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "The platform is operable and rebuildable without tribal memory.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i6"
+    },
+    {
+      "id": "I7",
+      "kind": "domain",
+      "status": "proposed",
+      "outcome": "Self-hosting remains viable in money and scarce human attention, or the premium is explicit and accepted.",
+      "owner": "architect",
+      "parent_ids": ["master"],
+      "source": "docs/40-governance/master-intent.md#i7"
+    },
+    {
+      "id": "infrastructure-availability",
+      "kind": "service",
+      "status": "proposed",
+      "outcome": "DEEP infrastructure remains secure, reachable, recoverable, sufficiently resourced, and capable of supporting declared services.",
+      "owner": "infrastructure-operator",
+      "parent_ids": ["I1", "I2", "I3", "I5", "I6", "I7"],
+      "source": "docs/40-governance/infrastructure-operations-workflow.md",
+      "manifest": "intents/infrastructure.json",
+      "commitment": {
+        "requested_mode": "managed_service",
+        "sponsor": "master",
+        "beneficiary": "master",
+        "funding_source": "pending",
+        "review_period": "quarterly",
+        "exit_plan": "retire only with an accepted replacement infrastructure owner and preserved recovery path"
+      }
+    },
+    {
+      "id": "example-service",
+      "kind": "service",
+      "status": "draft",
+      "outcome": "The fictional example service stays available to its declared users on <host-a> and <host-b>, demonstrating the service fulfilment folder shape.",
+      "owner": "example-agent",
+      "parent_ids": ["I4", "I6"],
+      "source": "services/example-service/README.md"
+    }
+  ]
+}
