@@ -10,7 +10,7 @@ DEEP is a governance framework for running real infrastructure — hypervisors,
 VMs, networking, DNS, services, backups — with a team of AI agents and one
 human architect. Design, documentation, monitoring, change execution, and
 recovery are delegated to agents; what agents may do, when, and under whose
-approval is enforced by mechanism (tier gates, scoped credentials, CI
+approval is enforced by mechanism (clearance gates, scoped credentials, CI
 validation, independent gates), not by instructions alone.
 
 This repository is the **generic framework**. A concrete deployment (an
@@ -18,13 +18,13 @@ This repository is the **generic framework**. A concrete deployment (an
 hosts, intents, incidents, identities, and audit trail. Nothing
 instance-specific belongs here.
 
-## The five-tier intent hierarchy
+## The five-layer intent hierarchy
 
 Infrastructure exists only to serve an active intent. A service that does not
 map to an active intent is a liability, not an asset — no matter how healthy
 its uptime looks.
 
-| Tier of intent | Kind | Meaning |
+| Layer of intent | Kind | Meaning |
 |---|---|---|
 | 1 | **Master** | The one root outcome of the instance (the "why we exist"). |
 | 2 | **Domain** | Enduring outcome areas beneath the master intent (platform, data, privacy, security, operations, cost). |
@@ -52,19 +52,19 @@ them — stay distinct:
 - **Business** — application behaviour and user outcomes: functional
   acceptance, prioritisation, confirming the service does what users need.
 
-## Autonomy tiers (T0–T5)
+## Clearance ladder (CL0–CL5)
 
-Every action class maps to exactly one tier: **T0** observe (read-only),
-**T1** propose (PRs/plans, no execution), **T2** execute reversible changes,
-**T3** execute with senior-agent approval (the "Methodical Skeptic" gate),
-**T4** execute with human approval, **T5** human-only. Failures demote an
+Every action class maps to exactly one clearance: **CL0** observe (read-only),
+**CL1** propose (PRs/plans, no execution), **CL2** execute reversible changes,
+**CL3** execute with senior-agent approval (the "Methodical Skeptic" gate),
+**CL4** execute with human approval, **CL5** human-only. Failures demote an
 action class; clean history promotes it. Full model:
 [`docs/00-operating-model.md`](docs/00-operating-model.md) §4.
 
 ## Core documents
 
 - [`docs/00-operating-model.md`](docs/00-operating-model.md) — the founding
-  design document: purpose, scope, 25 design principles, tier model, agent
+  design document: purpose, scope, 25 design principles, clearance model, agent
   organisation, documentation architecture, governance mechanics, phases.
 - [`docs/40-governance/master-intent.md`](docs/40-governance/master-intent.md)
   — master intent, domain intents, and global assumptions (template +
@@ -102,7 +102,7 @@ python3 scripts/validate_infrastructure_intent.py intents/infrastructure.json
 1. **Docs before autonomy** — no agent operates on what isn't documented.
 2. **Delegated execution** — agents do the work; humans review proposals and
    outcomes, not keystrokes.
-3. **Enforced policies** — autonomy is granted by tier and enforced by
+3. **Enforced policies** — autonomy is granted by clearance and enforced by
    mechanism.
 4. **Reversibility-first** — read-only before writes, PRs before pushes,
    rollback paths before migrations.

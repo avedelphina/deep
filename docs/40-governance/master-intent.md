@@ -213,7 +213,7 @@ writes its own:
 |----|------------|-----------|
 | **A1** | Primary users are a small group (single-digit to ~20 humans), not a public ISP-scale audience. | Capacity, threat model, and support-model blueprints break — redesign. |
 | **A2** | Self-hosting remains legally and practically viable for content *we have rights to use*. | I4 media intent must shrink or stop; legal review. |
-| **A3** | Architect human time is the scarcest resource; agent labour is usable for reversible ops and docs. | Autonomy tiers and agent roster assumptions fail. |
+| **A3** | Architect human time is the scarcest resource; agent labour is usable for reversible ops and docs. | The clearance ladder and agent roster assumptions fail. |
 | **A4** | Site connectivity and power are "good enough" with occasional blips; we accept non-five-nines — or the estate is deliberately distributed with local hardware under central orchestration. | If HA/multi-site becomes required, I1 blueprints change materially. |
 | **A5** | **Every product is replaceable.** A media server migration already happened once under license pressure; the current binary may become unacceptable too. I4 names the *outcome*, not the product. | Blueprint swap / accepted-risk — not a new Master Intent. |
 | **A6** | Where a service class underdelivers, it is reported as a gap, not as satisfied. | Board re-opens the class: invest or narrow. |
@@ -251,7 +251,7 @@ A seeded instance should answer, during Phase 0–1:
 
 | Rule | Detail |
 |------|--------|
-| Who edits intents | Architect (T5 for deprecation; T4 for material rewrite) |
+| Who edits intents | Architect (CL5 for deprecation; CL4 for material rewrite) |
 | Who audits linkage | The Board — monthly intent–assumption audit, event-driven on material change (operating model §8.1) |
 | Missing link | Blueprint without an active-intent link → Pending decommission queue |
 | Failed assumption | Board opens redesign/decommission tickets for every dependent blueprint |

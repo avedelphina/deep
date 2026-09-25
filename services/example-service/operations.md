@@ -31,7 +31,7 @@ authority, idempotence, lock behaviour, timeout/retry semantics, recovery
 path, structured output, and independent verification.
 
 Failover from `<host-a>` to the standby on `<host-b>` is **not** safe
-automation in this example: it is a T4 change (staged by agents, approved by
+automation in this example: it is a CL4 change (staged by agents, approved by
 the human authority of record, executed and verified by agents).
 
 ## Exception handling

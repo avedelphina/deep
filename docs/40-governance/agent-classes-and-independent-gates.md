@@ -25,8 +25,8 @@ The four classes are:
   acceptance, application configuration and data semantics, prioritisation,
   and confirmation that a service does what users need.
 
-These classes complement the DEEP autonomy tiers (T0-T5). A class answers
-"what responsibility is being exercised?" A tier answers "what authority does
+These classes complement the DEEP clearance ladder (CL0-CL5). A class answers
+"what responsibility is being exercised?" A clearance answers "what authority does
 this action have?"
 
 ## Accountability boundaries
@@ -52,7 +52,7 @@ A normal application change follows this control graph:
 2. **Management / Documentation** registers the change, dependencies, risk,
    owner, rollback, and required gates.
 3. **Infrastructure** stages and executes the technical deployment within its
-   DEEP tier.
+   DEEP clearance.
 4. **Infrastructure** performs technical acceptance from a fresh process and
    independent probe.
 5. **Business** performs functional acceptance against the intended user
@@ -85,7 +85,7 @@ press buttons. DEEP should scale the required independence with risk.
 - **High risk / irreversible:** separate authority is mandatory. The executor
   cannot approve its own plan or close its own change; separate agent
   credentials or human approval are required according to the applicable DEEP
-  tier.
+  clearance.
 
 A new prompt is not automatically an independent reviewer. Independence is
 credible only when the gate has a separate execution context, restricted
@@ -98,7 +98,7 @@ The enforcement rule is:
 
 > An agent may perform multiple classes, but may not satisfy two dependent
 > gates in the same execution chain when those gates are defined as
-> independent for the action's risk tier.
+> independent for the action's clearance.
 
 The control plane should reject, rather than merely warn about:
 
@@ -144,7 +144,7 @@ real rosters live in the instance repository):
   without direct production mutation.
 
 This mapping is illustrative. A role assignment must name the asset or
-service scope, authority tier, required gates, and escalation path.
+service scope, clearance, required gates, and escalation path.
 
 ## Scaling path
 
@@ -166,7 +166,7 @@ independence at the gates where risk requires it.
 
 1. Add class and gate fields to the DEEP asset, service, and change registry.
 2. Map every current agent to one or more classes and record its scopes.
-3. Define risk-to-independence policy alongside T0-T5 action policy.
+3. Define risk-to-independence policy alongside CL0-CL5 action policy.
 4. Implement gate state transitions that reject invalid self-approval.
 5. Give each class a standard evidence schema: actor, target, timestamp,
    action, result, probe, and rollback reference.

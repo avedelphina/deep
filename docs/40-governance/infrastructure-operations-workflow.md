@@ -141,7 +141,7 @@ For a planned or automatically authorised change:
 6. Record before/after versions, evidence, result, and rollback reference.
 7. Reopen, rollback, or escalate on failed verification.
 
-High-risk or irreversible changes follow the applicable DEEP tier and four-eyes
+High-risk or irreversible changes follow the applicable DEEP clearance and four-eyes
 rule. Routine reversible housekeeping does not need a ceremonial second agent;
 it does need an independent automated verification or fresh probe.
 

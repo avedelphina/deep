@@ -38,7 +38,7 @@ different shapes — a single-architect household-scale estate, a small
 professional-services firm with multiple humans and thin own infrastructure —
 can reuse it without a ground-up rewrite. Portability rules: an instance must
 not hardcode single-human assumptions into shared structure; the human ladder
-above T4 is extensible (§4).
+above CL4 is extensible (§4).
 
 ## 2. Scope
 
@@ -87,9 +87,9 @@ agent-organisation form.
 
 | # | Principle | Meaning |
 |---|-----------|---------|
-| P1 | **Docs before autonomy** | No agent operates on what isn't documented. Inventory → runbooks → delegation. **Blueprint-as-source:** every managed object has a canonical blueprint in `docs/`; an object that exists in the hypervisor but not in the repo is *drift* — a T0 alert. **Live troubleshooting exception:** during an active incident, humans (and tier-allowed agents) may change a live host to restore service *without* a prior blueprint update. The incident is not closed until each live delta is either **promoted** into blueprint + snapshot or **explicitly discarded** with a recorded reason — otherwise it is just untracked drift with a story. |
+| P1 | **Docs before autonomy** | No agent operates on what isn't documented. Inventory → runbooks → delegation. **Blueprint-as-source:** every managed object has a canonical blueprint in `docs/`; an object that exists in the hypervisor but not in the repo is *drift* — a CL0 alert. **Live troubleshooting exception:** during an active incident, humans (and clearance-allowed agents) may change a live host to restore service *without* a prior blueprint update. The incident is not closed until each live delta is either **promoted** into blueprint + snapshot or **explicitly discarded** with a recorded reason — otherwise it is just untracked drift with a story. |
 | P2 | **Delegated execution** | Agents do the work. The architect reviews proposals and outcomes, not keystrokes. |
-| P3 | **Enforced policies** | Autonomy is granted by tier, enforced by mechanism (branch protection, approval gates, scoped credentials) — not by instructions alone. |
+| P3 | **Enforced policies** | Autonomy is granted by clearance, enforced by mechanism (branch protection, approval gates, scoped credentials) — not by instructions alone. |
 | P4 | **Reversibility-first** | Actions ordered by reversibility. Irreversible actions need observed certainty or an explicit rollback path. |
 | P5 | **Control ≠ managed plane** | The documentation/governance plane survives the failure of the managed plane. **Durable business/user data is a third plane:** it is neither "docs" nor "compute." Backups, restore tests, and retention live under data-plane runbooks; losing the fleet must not imply losing the data, and a config snapshot is not a data backup (§6.1). |
 | P6 | **Weak beliefs, careful commitments** | Reports separate observed / inferred / consistent. Incidents rebuild from verified facts. |
@@ -106,48 +106,48 @@ agent-organisation form.
 | P17 | **Lean-mean — PoC is a liability** | Proof-of-concept code is never ignored. Isolate it from critical paths, or promote it to full blueprint standard (docs, SLAs, monitoring, death-proof). A PoC that silently became load-bearing is a technical-debt *incident*, not a curiosity. |
 | P18 | **Dependency mapping** | No service is standalone. Agents maintain the value-chain graph so silent load-bearers (the certificate authority behind the media service) are visible as critical, while high-uptime pets with no chain are visible as candidates for isolation. |
 | P19 | **User-centric observability** | A service is "healthy" only if the user can do the intended thing. CPU/RAM/uptime are secondary signals. Failed playback, unresolved tickets, and zero feature usage override green dashboards. |
-| P20 | **Feedback-as-T0** | User feedback (tickets, complaints, usage patterns) is high-priority observational data. A user complaint invalidates the current "healthy" belief about the service until re-verified. |
+| P20 | **Feedback-as-CL0** | User feedback (tickets, complaints, usage patterns) is high-priority observational data. A user complaint invalidates the current "healthy" belief about the service until re-verified. |
 | P21 | **Reliability contract** | Agents deliver user outcomes, not just managed infra. If the organisation cannot communicate reliably *to* users and cannot hear what they want, the feedback loop is broken — establishing that channel is itself a kill-chain priority (P11). |
 | P22 | **Elegance = transparency for the rebuilder** | Elegance is not cosmic aesthetics and not "short for short's sake." It is *minimisation of hidden state and cognitive load* so a stressed human can reclaim the system. If an architect cannot read a service blueprint and understand its shape in under 30 minutes, the system is too complex — rewrite the blueprint or simplify the service. Logically weak, representationally elegant. |
 | P23 | **Contain what you cannot yet exit** | Some liabilities stay — legacy apps, incumbent vendors, ugly but load-bearing tools. That is allowed **only as an explicit accepted risk**, not as silence. Accepted risks are inventory items with owner, residual risk, **compensating controls**, and a review cadence. While the exit is deferred, agents are obligated to *evolve the containment* (monitoring, least privilege, blast-radius limits, backup/restore proof, user communication) so the problem gets smaller in impact even when it cannot yet go away. "We live with it" never means "we stop managing it." |
 | P24 | **Bifurcated identity plane (topology by exposure)** | Human authentication and infrastructure recovery trust must not share fate. A centralised identity provider (OIDC/OAuth2) is the right authority for **humans and external-facing organisational agents** (coordinators, client-facing bots, public API integrations) where enterprise auditability, delegation, and dynamic lifecycle management are primary. Conversely, **internal infrastructure and recovery agents** must operate on decentralised, capability-scoped trust (mesh-VPN node keys, scoped pre-shared tokens, asymmetric keypairs) so an IdP outage never halts autonomous operations or recovery loops. Each instance records its identity and secrets policy in a dedicated governance document. |
 | P25 | **Automate deterministic work** | Use scripts, declarative configuration, schedulers, policy engines, and machine-verifiable checks whenever a task is repeatable or its outcome can be specified precisely. Do not spend model tokens to imitate a script. Agents design, invoke, monitor, and improve automation, then handle exceptions, ambiguity, and decisions. Automation is preferred not merely because it is cheaper, but because deterministic execution is more consistent, testable, auditable, retryable, and scalable than repeated natural-language instructions. |
 
-## 4. Autonomy tier model
+## 4. Clearance model
 
-The core governance instrument. Every action class maps to exactly one tier.
+The core governance instrument. Every action class maps to exactly one clearance.
 Agents differ in reasoning capability — the model reflects that: approval for
-mid-tier actions is delegated to a higher-capability agent, and only what
+mid-clearance actions is delegated to a higher-capability agent, and only what
 exceeds its judgement reaches a human authority.
 
-| Tier | Name | Description | Examples |
+| Clearance | Name | Description | Examples |
 |------|------|-------------|----------|
-| **T0** | Observe | Read-only operations, always allowed. | metrics, logs, inventory, drift detection, doc reads |
-| **T1** | Propose | Agents prepare changes as proposals (PR, plan, runbook, ticket). No execution. | config PRs, capacity plans, incident postmortems |
-| **T2** | Execute reversible | Agents execute low-risk, reversible changes autonomously; notify after. | service restarts, cert renewals, doc publishing, cache clears |
-| **T3** | Execute with senior-agent approval | A higher-capability agent ("methodical skeptic") reviews the staged change for risk, then approves, rejects, or escalates to T4. For changes where a human cannot honestly measure risk but a stronger model can. | package upgrades, dependency updates, routine rollouts |
-| **T4** | Execute with human approval | Agents prepare and stage; a **human authority of record** approves; agents may execute and verify. In a single-architect instance that authority is the architect. In a multi-human instance it is whoever the authority matrix names for that object class. | config rollouts, new service deploys, DNS changes |
-| **T5** | Human-only | A human authority executes personally. Agents may prepare, never run. | credential rotation, payment/subscription changes, destructive data ops, hardware decommission |
+| **CL0** | Observe | Read-only operations, always allowed. | metrics, logs, inventory, drift detection, doc reads |
+| **CL1** | Propose | Agents prepare changes as proposals (PR, plan, runbook, ticket). No execution. | config PRs, capacity plans, incident postmortems |
+| **CL2** | Execute reversible | Agents execute low-risk, reversible changes autonomously; notify after. | service restarts, cert renewals, doc publishing, cache clears |
+| **CL3** | Execute with senior-agent approval | A higher-capability agent ("methodical skeptic") reviews the staged change for risk, then approves, rejects, or escalates to CL4. For changes where a human cannot honestly measure risk but a stronger model can. | package upgrades, dependency updates, routine rollouts |
+| **CL4** | Execute with human approval | Agents prepare and stage; a **human authority of record** approves; agents may execute and verify. In a single-architect instance that authority is the architect. In a multi-human instance it is whoever the authority matrix names for that object class. | config rollouts, new service deploys, DNS changes |
+| **CL5** | Human-only | A human authority executes personally. Agents may prepare, never run. | credential rotation, payment/subscription changes, destructive data ops, hardware decommission |
 
-**Human ladder above the agent ceiling:** T0–T3 are the agent-usable band
-(with T3 still gated by the Methodical Skeptic function). **T4 and above are
-human tiers.** A larger organisation may insert additional *human-only* rungs
-above T4 (e.g. engagement lead → firm architect → CEO/legal) without minting
+**Human ladder above the agent ceiling:** CL0–CL3 are the agent-usable band
+(with CL3 still gated by the Methodical Skeptic function). **CL4 and above are
+human clearances.** A larger organisation may insert additional *human-only* rungs
+above CL4 (e.g. engagement lead → firm architect → CEO/legal) without minting
 new agent powers — those rungs refine *which human* must approve or execute,
 not what an agent may do alone. A single-architect instance collapses the
 human ladder to one person; the spine keeps the ladder extensible.
 
-Escalation: an agent that hits a boundary above its tier mid-task stops,
+Escalation: an agent that hits a boundary above its clearance mid-task stops,
 reports, and waits. The Methodical Skeptic escalates to the relevant human
 authority whenever its confidence is insufficient — never guesses at approval.
 
 **Demotion:** any failed autonomous action auto-demotes that action class one
-tier until a human authority re-promotes it. **Not all agents are created
-equal** — default tiers per role (§5) reflect measured capability, not title.
+clearance until a human authority re-promotes it. **Not all agents are created
+equal** — default clearances per role (§5) reflect measured capability, not title.
 
 **Promotion:** approval scope shrinks, not only grows. Quarterly, the
 Methodical Skeptic reviews action classes with clean execution history and
-promotes them down a tier (T4→T3→T2) subject to the human authority that owns
+promotes them down a clearance step (CL4→CL3→CL2) subject to the human authority that owns
 that class. Controls concentrate where irreversibility lives and relax where
 evidence proves safety — minimum effective control, not maximum possible
 control.
@@ -160,17 +160,17 @@ may mix agent runtimes (P7). Roles are defined by **class** (see
 `40-governance/agent-classes-and-independent-gates.md`), not by name; each
 instance binds names and platforms to these roles privately.
 
-| Role | Class | Responsibility | Default tier |
+| Role | Class | Responsibility | Default clearance |
 |------|-------|----------------|--------------|
-| Infrastructure operator | Infrastructure | fleet config, services, backups, monitoring | T2, T3 via PR |
-| Container/runtime operator | Infrastructure | images, compose stacks, runtime health | T2, T3 via PR |
-| Architect's reviewer / designer | Management / Documentation | design docs, doc reviews, cross-checks | T1 (docs T2) |
-| Work coordinator | Business + Management / Documentation | task tracking, prioritisation, user-facing coordination | T1 |
-| Structural problem-solver | (cross-class) | cross-domain analysis, architecture review | T1 |
-| Methodical Skeptic (delegated approval) | (gate) | risk review of T3 proposals; approve / reject / escalate. Every T3 review answers in writing: *is this over-committed?* and *does it have a rollback path?* | approves T3 |
-| The Board (steering) | (gate) | holds Master Intent and Global Assumptions; **monthly** intent–assumption audit (plus event-driven on material change); flags zombies, accepted-risk reviews (P23), and cascading invalidation; never touches the hypervisor | T0 observe + T1 propose decommission |
-| Steward (housekeeping) | Infrastructure | owns the P12 housekeeping stream end-to-end: backlog, cadence, tickets, evidence of removal; feeds on drift and inventory; does not replace build-out work — *removes and contains* | T1 propose; T2 on approved reversible cleanup classes |
-| User-Rep (customer antibody) | Business | monitors the feedback loop (tickets, messaging, usage); advocates for the user; may *pause* infra agents when user experience is being compromised; owns the user-closing rule | T1 + pause authority |
+| Infrastructure operator | Infrastructure | fleet config, services, backups, monitoring | CL2, CL3 via PR |
+| Container/runtime operator | Infrastructure | images, compose stacks, runtime health | CL2, CL3 via PR |
+| Architect's reviewer / designer | Management / Documentation | design docs, doc reviews, cross-checks | CL1 (docs CL2) |
+| Work coordinator | Business + Management / Documentation | task tracking, prioritisation, user-facing coordination | CL1 |
+| Structural problem-solver | (cross-class) | cross-domain analysis, architecture review | CL1 |
+| Methodical Skeptic (delegated approval) | (gate) | risk review of CL3 proposals; approve / reject / escalate. Every CL3 review answers in writing: *is this over-committed?* and *does it have a rollback path?* | approves CL3 |
+| The Board (steering) | (gate) | holds Master Intent and Global Assumptions; **monthly** intent–assumption audit (plus event-driven on material change); flags zombies, accepted-risk reviews (P23), and cascading invalidation; never touches the hypervisor | CL0 observe + CL1 propose decommission |
+| Steward (housekeeping) | Infrastructure | owns the P12 housekeeping stream end-to-end: backlog, cadence, tickets, evidence of removal; feeds on drift and inventory; does not replace build-out work — *removes and contains* | CL1 propose; CL2 on approved reversible cleanup classes |
+| User-Rep (customer antibody) | Business | monitors the feedback loop (tickets, messaging, usage); advocates for the user; may *pause* infra agents when user experience is being compromised; owns the user-closing rule | CL1 + pause authority |
 
 Notes:
 
@@ -206,7 +206,7 @@ deep-instance/
 │   ├── 10-inventory/                  # fleet inventory (generated + curated)
 │   ├── 20-architecture/               # ADRs, diagrams
 │   ├── 30-runbooks/                   # operational procedures
-│   ├── 40-governance/                 # policies, tier definitions, budgets, identities
+│   ├── 40-governance/                 # policies, clearance definitions, budgets, identities
 │   ├── 50-operations/                 # SLOs, monitoring, incident reports, audit log
 │   └── 90-meta/                       # how the docs themselves are maintained
 ├── intents/                           # machine-readable intent registry + contracts
@@ -330,7 +330,7 @@ not create determinism, and even a well-written runbook can be followed
 inconsistently.
 
 Agents remain responsible for deciding what should happen, designing and
-reviewing the automation, invoking it within the applicable tier, observing
+reviewing the automation, invoking it within the applicable clearance, observing
 its result, and handling exceptions. They should not repeatedly perform the
 same mechanical steps by hand when those steps can be encoded and tested.
 
@@ -366,7 +366,7 @@ whether independent verification passed.
 
 ## 8. Governance mechanics
 
-- **Change flow:** ticket → agent proposal → PR → (auto-checks) → tier gate →
+- **Change flow:** ticket → agent proposal → PR → (auto-checks) → clearance gate →
   execute → verify → audit entry.
 - **Audit trail — both stores:** every agent action is appended to
   `docs/50-operations/audit-log/` in the instance repo (human-readable,
@@ -377,9 +377,9 @@ whether independent verification passed.
   detecting agent opens a PR that either **imports** the unmanaged object
   into the blueprint or **deletes** it. Infrastructure must be explicitly
   defined; undefined state is treated as an incident, not a curiosity.
-- **Rollback:** every T2–T4 change declares its rollback path before execution.
+- **Rollback:** every CL2–CL4 change declares its rollback path before execution.
 - **Budgets:** per-agent LLM/token budgets tracked by the orchestration
-  layer; over-budget agents degrade to T0. Infra spend and AI spend are both
+  layer; over-budget agents degrade to CL0. Infra spend and AI spend are both
   reported as first-class metrics (P9).
 - **Housekeeping stream (P12):** owned by the **Steward** — a permanent
   cleanup queue (stale accounts, orphaned DNS, unused services, legacy
@@ -421,7 +421,7 @@ Canonical source: `40-governance/master-intent.md`.
   a critical path that are still PoC-grade become technical-debt incidents
   under P17 — promote or rebuild lean for that path, don't generalise the PoC.
 - The architect owns the Master Intent content; the Board audits linkage and
-  proposes deprecation. Deprecating an intent is T4/T5 — never silent.
+  proposes deprecation. Deprecating an intent is CL4/CL5 — never silent.
 
 ### 8.2 User feedback loop
 
@@ -442,9 +442,9 @@ Canonical source: `40-governance/master-intent.md`.
 | Phase | Content | Entry gate | Exit gate |
 |-------|---------|-----------|-----------|
 | **0 — Design** | operating model, repo structure, doc conventions, Master Intent draft | repo exists | model approved by architect; Master Intent seeded |
-| **1 — Inventory & read-only ops** | fleet inventory, runbooks, monitoring, kill-chain map (P11), **criticality/dependency map (P18)**, first death-proof drill; two-way user channel designed (P21); agents at T0–T1 | model approved | inventory complete; runbooks for top-10 ops; first death-proof drill passed (§6.2); criticality map for the primary user outcome; user channel decision recorded |
-| **2 — Proposal-driven changes** | agents prepare PRs; T3/T4 chain exercised; Board monthly audit live; Steward housekeeping live; User-Rep + user-closing rule live | phase 1 exit | 2 weeks of clean proposal/execute cycles; first zombie/decommission proposal from Board |
-| **3 — Graduated autonomy** | T2 for proven action classes; drift-as-PR; auto-rollback; lean-mean isolation of non-critical pets | phase 2 exit | zero unrecovered autonomous failures over 4 weeks; death-proof drills on quarterly cadence; non-critical pets sandboxed or decommissioned |
+| **1 — Inventory & read-only ops** | fleet inventory, runbooks, monitoring, kill-chain map (P11), **criticality/dependency map (P18)**, first death-proof drill; two-way user channel designed (P21); agents at CL0–CL1 | model approved | inventory complete; runbooks for top-10 ops; first death-proof drill passed (§6.2); criticality map for the primary user outcome; user channel decision recorded |
+| **2 — Proposal-driven changes** | agents prepare PRs; CL3/CL4 chain exercised; Board monthly audit live; Steward housekeeping live; User-Rep + user-closing rule live | phase 1 exit | 2 weeks of clean proposal/execute cycles; first zombie/decommission proposal from Board |
+| **3 — Graduated autonomy** | CL2 for proven action classes; drift-as-PR; auto-rollback; lean-mean isolation of non-critical pets | phase 2 exit | zero unrecovered autonomous failures over 4 weeks; death-proof drills on quarterly cadence; non-critical pets sandboxed or decommissioned |
 
 ## 10. Open questions (per instance)
 
@@ -465,7 +465,7 @@ leaves them open:
    identity, contracted scope, reporting back into the in-house org.
 5. **Kill chain** — the shortest failure sequence that ends the organisation
    (hypervisor storage? repo availability? identity plane? user-comms
-   channel?). Mapped in Phase 1; kill-chain nodes pin to T5 change authority
+   channel?). Mapped in Phase 1; kill-chain nodes pin to CL5 change authority
    regardless of convenience (P11).
 6. **User communication channel** — reliable two-way path to end users
    (messenger? email? ticket replies?). Required before User-Rep and
@@ -489,8 +489,8 @@ leaves them open:
   playback within 5 s, 99 % of attempts monthly"). SLOs drive alerting and
   error budgets — how an SME says "reliable" with numbers instead of
   adjectives.
-- **Tier (T0–T5)** — autonomy level of an action class, §4.
-- **Methodical Skeptic** — higher-capability agent holding delegated T3
+- **Clearance (CL0–CL5)** — autonomy level of an action class, §4.
+- **Methodical Skeptic** — higher-capability agent holding delegated CL3
   approval authority; doctrine holder for weak beliefs / careful
   commitments (P6), see §4/§5.
 - **The Board** — non-executing steering role holding Master Intent and
@@ -509,9 +509,9 @@ leaves them open:
 - **Silent load-bearer** — service that looks non-critical (PoC, low profile)
   but sits on a user-outcome dependency chain (P17, P18).
 - **Existential asset** — an asset class whose loss is existential (domain
-  controllers, root CAs, key material). Kept distinct from "T0" the action
-  tier; kill-chain nodes (P11) are typically existential assets. Human orgs
-  may add human-only rungs above T4 without extending agent power (§4).
+  controllers, root CAs, key material). Kept distinct from "CL0" the action
+  clearance; kill-chain nodes (P11) are typically existential assets. Human orgs
+  may add human-only rungs above CL4 without extending agent power (§4).
 - **Blueprint** — documentation of generative logic and intent (weak
   hypothesis; for adaptation), §6.1. Minimum schema in §6.3.
 - **Snapshot** — point-in-time *configuration* capture: configs, versions,
