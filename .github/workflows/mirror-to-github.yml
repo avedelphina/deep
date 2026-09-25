@@ -1,6 +1,7 @@
 name: Mirror to GitHub
 
 # One-way mirror: Gitea (git.ocean) is authoritative, GitHub only receives.
+# Concurrency is scoped per repository so the two DEEP repos never queue behind each other.
 # The internal repo never depends on the public one; this job has no reverse path.
 
 on:
@@ -9,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: mirror-github
+  group: mirror-github-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
