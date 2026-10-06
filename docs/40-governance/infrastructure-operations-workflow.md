@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-The infrastructure operator owns an operational intent, not a ticket queue. Ticket timing follows the autonomy contract: intent-bounded reversible CL1/CL2 work may act and record immediately after execution; material, irreversible, identity, ownership, durable-data, architecture, credential, and CL3+ work requires a ticket and decision before execution. A ticket is evidence and coordination, not automatic permission:
+The infrastructure operator owns an operational intent, not a ticket queue. Ticket timing follows the autonomy contract: intent-bounded reversible CL2 work may act and record immediately after execution; material, irreversible, identity, ownership, durable-data, architecture, credential, and CL3+ work requires a ticket and decision before execution. A ticket is evidence and coordination, not automatic permission:
 
 > The DEEP infrastructure is secure, reachable, recoverable, sufficiently resourced, and capable of supporting its declared services.
 
