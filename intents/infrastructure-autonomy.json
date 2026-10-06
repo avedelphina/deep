@@ -1,0 +1,32 @@
+{
+  "intent_id": "infrastructure-availability",
+  "contract_version": 1,
+  "status": "proposed",
+  "success_probes": ["independent_health_probe", "primary_user_workflow", "data_consistency_probe"],
+  "operations": [
+    {
+      "id": "service.restart_approved",
+      "clearance": "CL2",
+      "target_scope": "declared-service",
+      "normal_autonomy": true,
+      "notify_after": "material_impact",
+      "ask_before": ["cross-tenant-impact", "downtime_above_declared_limit"],
+      "stop_conditions": ["target_scope_unclear", "rollback_unproven", "user_outcome_probe_fails"],
+      "rollback": "restore_previous_service_state",
+      "verification": ["service_health", "primary_user_workflow"],
+      "idempotent": true
+    },
+    {
+      "id": "drift.reconcile_approved",
+      "clearance": "CL1",
+      "target_scope": "declared-inventory",
+      "normal_autonomy": false,
+      "notify_after": "pr_created",
+      "ask_before": ["conflicting_sources", "ownership_change"],
+      "stop_conditions": ["source_conflict", "missing_evidence"],
+      "rollback": "close_or_revert_proposal",
+      "verification": ["repository_diff_review"],
+      "idempotent": true
+    }
+  ]
+}

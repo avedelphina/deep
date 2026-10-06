@@ -82,6 +82,10 @@ action class; clean history promotes it. Full model:
   — autonomous action boundaries, stress-to-signal learning, and adaptive proposals.
 - [`docs/40-governance/autonomy-stress-record.md`](docs/40-governance/autonomy-stress-record.md)
   — structured record template for material or repeated stress.
+- [`docs/40-governance/reconciliation-contract.md`](docs/40-governance/reconciliation-contract.md)
+  — Mantis-to-configuration reconciliation contract.
+- [`docs/40-governance/alice-management-documentation-class.md`](docs/40-governance/alice-management-documentation-class.md)
+  — Alice's authoritative management/documentation role.
 - [`docs/40-governance/decision-boundaries.md`](docs/40-governance/decision-boundaries.md)
   — how agent decisions are bounded before any action executes.
 - [`services/example-service/`](services/example-service/) — a fictional
