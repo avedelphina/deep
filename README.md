@@ -78,8 +78,12 @@ action class; clean history promotes it. Full model:
   — class model and machine-enforced four-eyes independence.
 - [`docs/40-governance/infrastructure-operations-workflow.md`](docs/40-governance/infrastructure-operations-workflow.md)
   — how a service intent is fulfilled as a closed operational loop.
+- [`docs/40-governance/autonomy-and-antifragility.md`](docs/40-governance/autonomy-and-antifragility.md)
+  — autonomous action boundaries, stress-to-signal learning, and adaptive proposals.
+- [`docs/40-governance/autonomy-stress-record.md`](docs/40-governance/autonomy-stress-record.md)
+  — structured record template for material or repeated stress.
 - [`docs/40-governance/decision-boundaries.md`](docs/40-governance/decision-boundaries.md)
-  — how agent *decisions* are bounded before any action executes.
+  — how agent decisions are bounded before any action executes.
 - [`services/example-service/`](services/example-service/) — a fictional
   worked example of a service fulfilment folder.
 
