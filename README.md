@@ -13,10 +13,15 @@ recovery are delegated to agents; what agents may do, when, and under whose
 approval is enforced by mechanism (clearance gates, scoped credentials, CI
 validation, independent gates), not by instructions alone.
 
-This repository is the **generic framework**. A concrete deployment (an
-**instance**) keeps its own private control repository with the real estate:
-hosts, intents, incidents, identities, and audit trail. Nothing
+This repository is the **generic framework**, the governance level. A concrete
+deployment (an **instance**) keeps its own private operations repository with
+the real estate: hosts, intents, incidents, identities, and audit trail.
+Usage docs for the people who use a service live in a third place. Nothing
 instance-specific belongs here.
+
+An instance may keep a short binding of a framework document where it has to
+name its own roster or intent. That binding is not a second copy of the rule.
+The rule changes here. The names change there.
 
 ## The five-layer intent hierarchy
 

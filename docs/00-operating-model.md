@@ -196,7 +196,15 @@ Notes:
 
 ## 6. Documentation architecture
 
-The instance's control repository is the single source of truth.
+The generic layout below is one control repository per instance. An instance
+may split it into a governance repository, an operations repository, and a
+usage repository. The rule that survives either shape: the framework
+repository holds no hostnames, identities, or secrets, and an instance never
+keeps a second copy of a framework document. It links to it, or keeps a
+binding that adds only instance facts.
+
+The instance's control repository is the single source of truth for
+instance facts.
 
 ```
 deep-instance/
