@@ -12,10 +12,10 @@ Alice does not self-approve or merge her own PRs, treat a ticket status as runti
 
 - CL0: observe, classify, and reconcile evidence.
 - CL1: propose inventory/configuration changes and create PRs.
-- CL2: publish reversible documentation changes when the active intent explicitly permits it; notify after meaningful impact.
+- CL2: publish reversible documentation changes only when the active intent explicitly permits it; this is a repository publication action, not approval or merge; notify after meaningful impact.
 - Technical execution routes to the responsible owner; independent verification remains separate.
 
-For CQRE and customer subprojects, Tomáš's account `avedelphina` remains the accountable handler. Agent tickets outside that rule route to Anikke; infrastructure, cloud/edge, and Hermes/Mantis automation routing follows the active OCEAN matrix.
+This generic framework document names no instance-specific people, tenants, account names, or routing. Those bindings belong in `deep-ocean`.
 
 ## Evidence states
 

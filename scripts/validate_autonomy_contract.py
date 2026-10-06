@@ -26,6 +26,10 @@ def main() -> int:
     operations = data["operations"]
     if not isinstance(operations, list) or not operations:
         fail("operations must be non-empty")
+    allowed = {"restart_affected_service", "renew_expiring_certificate", "remove_expired_rotated_logs", "retry_failed_backup", "repair_declared_reversible_drift"}
+    unknown = {item.get("id") for item in operations} - allowed
+    if unknown:
+        fail(f"unknown operation ids: {', '.join(sorted(unknown))}")
     ids = set()
     for operation in operations:
         missing = FIELDS - operation.keys()

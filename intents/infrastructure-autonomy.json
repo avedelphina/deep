@@ -4,29 +4,10 @@
   "status": "proposed",
   "success_probes": ["independent_health_probe", "primary_user_workflow", "data_consistency_probe"],
   "operations": [
-    {
-      "id": "service.restart_approved",
-      "clearance": "CL2",
-      "target_scope": "declared-service",
-      "normal_autonomy": true,
-      "notify_after": "material_impact",
-      "ask_before": ["cross-tenant-impact", "downtime_above_declared_limit"],
-      "stop_conditions": ["target_scope_unclear", "rollback_unproven", "user_outcome_probe_fails"],
-      "rollback": "restore_previous_service_state",
-      "verification": ["service_health", "primary_user_workflow"],
-      "idempotent": true
-    },
-    {
-      "id": "drift.reconcile_approved",
-      "clearance": "CL1",
-      "target_scope": "declared-inventory",
-      "normal_autonomy": false,
-      "notify_after": "pr_created",
-      "ask_before": ["conflicting_sources", "ownership_change"],
-      "stop_conditions": ["source_conflict", "missing_evidence"],
-      "rollback": "close_or_revert_proposal",
-      "verification": ["repository_diff_review"],
-      "idempotent": true
-    }
+    {"id": "restart_affected_service", "clearance": "CL2", "target_scope": "declared-service", "normal_autonomy": true, "notify_after": "material_impact", "ask_before": ["cross-tenant-impact", "downtime_above_declared_limit"], "stop_conditions": ["target_scope_unclear", "rollback_unproven", "user_outcome_probe_fails"], "rollback": "restore_previous_service_state", "verification": ["service_health", "primary_user_workflow"], "idempotent": true},
+    {"id": "renew_expiring_certificate", "clearance": "CL2", "target_scope": "declared-certificate", "normal_autonomy": true, "notify_after": "renewal_failure_or_material_impact", "ask_before": ["identity_or_trust_boundary_change"], "stop_conditions": ["target_scope_unclear", "identity_mismatch", "rollback_unproven"], "rollback": "restore_previous_certificate", "verification": ["certificate_identity_probe", "service_health"], "idempotent": true},
+    {"id": "remove_expired_rotated_logs", "clearance": "CL2", "target_scope": "declared-log-path", "normal_autonomy": true, "notify_after": "material_capacity_impact", "ask_before": ["audit_retention_change", "unknown_log_provenance"], "stop_conditions": ["retention_policy_unclear", "user_data_at_risk"], "rollback": "restore_from_declared_backup_or_stop", "verification": ["capacity_probe", "service_health"], "idempotent": true},
+    {"id": "retry_failed_backup", "clearance": "CL2", "target_scope": "declared-backup-job", "normal_autonomy": true, "notify_after": "repeated_failure_or_recoverability_gap", "ask_before": ["backup_scope_change", "data_retention_change"], "stop_conditions": ["backup_target_unclear", "restore_path_unproven"], "rollback": "stop_retry_and_preserve_prior_artifact", "verification": ["backup_freshness_probe", "restore_evidence_probe"], "idempotent": true},
+    {"id": "repair_declared_reversible_drift", "clearance": "CL2", "target_scope": "declared-inventory", "normal_autonomy": true, "notify_after": "material_change", "ask_before": ["conflicting_sources", "ownership_change"], "stop_conditions": ["source_conflict", "missing_evidence", "rollback_unproven"], "rollback": "restore_previous_declared_state", "verification": ["declared_state_comparison", "independent_health_probe"], "idempotent": true}
   ]
 }
