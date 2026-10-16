@@ -139,40 +139,7 @@ Repeated stress must not be closed by repeating the same temporary repair withou
 
 ## 5. Required stress record
 
-For a material or repeated stress, record structured evidence containing:
-
-```yaml
-stress:
-  signal: disk_usage_above_threshold
-  detected_at: <timestamp>
-  target: <asset-or-service>
-  observed_impact: <facts>
-  immediate_action: <stabilisation>
-  result: stabilized | degraded | failed
-
-cause:
-  classification: <capacity_growth|abnormal_producer|policy_gap|unknown>
-  confidence: low | medium | high
-  evidence:
-    - <probe-or-record>
-
-lesson:
-  repeated: true | false
-  system_weakness: <what should improve>
-
-proposal:
-  type: adaptation
-  change: <specific change>
-  alternatives:
-    - <alternative>
-  recommendation: <reasoned recommendation>
-  rollback: <credible rollback or containment>
-  success_probe: <how to verify>
-
-decision:
-  required: true | false
-  reason: <why the intent boundary does or does not require a decision>
-```
+For a material or repeated stress, record structured evidence using the single template in [`autonomy-stress-record.md`](autonomy-stress-record.md). That template holds the schema and the checklist; this framework document does not duplicate it.
 
 Narrative may explain the record, but it does not replace observed evidence.
 
