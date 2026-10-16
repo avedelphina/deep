@@ -29,7 +29,7 @@
   },
   "automation": {
     "sweep": {"id": "infrastructure.sweep", "schedule": "every 30m", "timeout_seconds": 600, "lock": "one-per-asset-group", "verification": "fresh_probe_set"},
-    "safe_repairs": ["os.security_updates", "certificate.renew", "backup.retry", "service.restart_approved", "drift.reconcile_approved"]
+    "safe_repairs": ["renew_expiring_certificate", "retry_failed_backup", "restart_affected_service", "repair_declared_reversible_drift", "remove_expired_rotated_logs"]
   },
   "escalation": {
     "owner": "infrastructure-operator",
