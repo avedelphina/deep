@@ -8,6 +8,12 @@ on:
       - 'scripts/validate_intent_catalog.py'
       - 'docs/40-governance/master-intent.md'
       - 'docs/40-governance/infrastructure-operations-workflow.md'
+      - 'docs/40-governance/autonomy-and-antifragility.md'
+      - 'docs/40-governance/autonomy-stress-record.md'
+      - 'docs/40-governance/reconciliation-contract.md'
+      - 'docs/40-governance/alice-management-documentation-class.md'
+      - 'intents/infrastructure-autonomy.json'
+      - 'scripts/validate_autonomy_contract.py'
       - '.github/workflows/deep-intent-review.yml'
     branches: [main]
   push:
@@ -17,6 +23,12 @@ on:
       - 'scripts/validate_intent_catalog.py'
       - 'docs/40-governance/master-intent.md'
       - 'docs/40-governance/infrastructure-operations-workflow.md'
+      - 'docs/40-governance/autonomy-and-antifragility.md'
+      - 'docs/40-governance/autonomy-stress-record.md'
+      - 'docs/40-governance/reconciliation-contract.md'
+      - 'docs/40-governance/alice-management-documentation-class.md'
+      - 'intents/infrastructure-autonomy.json'
+      - 'scripts/validate_autonomy_contract.py'
       - '.github/workflows/deep-intent-review.yml'
     branches: [main]
 
@@ -27,6 +39,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate infrastructure intent
         run: python3 scripts/validate_infrastructure_intent.py intents/infrastructure.json
+      - name: Validate autonomy contract
+        run: python3 scripts/validate_autonomy_contract.py intents/infrastructure-autonomy.json
       - name: Validate intent catalog
         run: python3 scripts/validate_intent_catalog.py intents/intent-catalog.json
       - name: Check documentation references
