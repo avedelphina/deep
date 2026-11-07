@@ -93,8 +93,10 @@ assumptions, action semantics, evidence contract, and kill switch.
 
 ### Policy lifecycle
 
-The human-gated operations that create, revise, approve, arm, widen, re-arm,
-suspend, or retire a PBDO. Policy lifecycle operations are never autonomous.
+The human-gated operations that create, revise, approve, arm, widen, re-arm, or
+retire a PBDO are never autonomous. Suspension is a protective state change:
+it may be triggered automatically by a systemic kill condition or requested by
+an owner/user-outcome monitor. Re-arming after suspension is always human-gated.
 
 ### Policy execution
 
@@ -352,12 +354,24 @@ Every destructive policy must define and machine-check, as applicable:
 The instance may add stricter guards. It may not omit a required guard without
 a new policy revision and explicit human approval.
 
-### Unknown is not eligible
+### Unknown and identity mismatch are not eligible
 
 A missing probe, stale snapshot, unavailable service, path that cannot be
 resolved, or contradictory record is `unknown`, not `false` and not `true`.
-Unknown blocks destructive execution unless the policy explicitly defines a
-safe, human-approved handling path that does not destroy the data.
+The affected candidate is held or deferred without destructive action. It is
+not silently dropped from the evidence set, and the policy does not keep
+retrying it against the same stale snapshot.
+
+A candidate-level identity mismatch is held for resolution. If the mismatch
+indicates a protected-domain identity, a path crossing into a protected
+boundary, or a systemic crosswalk/configuration defect, suspend the entire
+policy and block new destructive runs. This distinction prevents one bad item
+from needlessly disabling an otherwise bounded policy while treating evidence
+of boundary failure as a policy-wide incident.
+
+Unknown blocks destructive execution; it never authorizes a best-effort delete.
+A safe, human-approved handling path may preserve or quarantine the candidate,
+but may not destroy it.
 
 ### Hold and notification
 
@@ -371,9 +385,11 @@ The policy may implement stages such as:
 eligible → held → notified → rechecked → actioned → verified
 ```
 
-A new playback, request, lock, recovery failure, identity mismatch, or policy
-drift resets or suspends the item according to the policy. It must not be
-silently ignored because the original timer elapsed.
+A new playback, request, or lock resets or extends the candidate's hold
+according to the policy. Candidate-specific recovery failure or identity
+mismatch defers that candidate; systemic recovery-source failure, protected-
+boundary evidence, or policy drift suspends the policy. None of these signals
+may be ignored merely because the original timer elapsed.
 
 ### Recovery and accepted loss
 
@@ -401,15 +417,27 @@ not a scoring rule.
 
 A PBDO separates policy authority from mechanical execution.
 
-### Policy author and human approver
+### Policy author, reviewer, and human approver
 
-The person or agent that drafts the policy must not be the sole approver. The
-human authority of record approves the policy revision, target boundary, loss
-trade-off, and action set after reviewing dry-run evidence.
+The policy author must not satisfy the independent review gate. A reviewer with
+a separate execution context and fresh policy export checks the boundary,
+operation, recovery model, and dry-run evidence. The human authority of record
+then approves the exact policy revision, target boundary, loss trade-off, and
+action set. The approval must be recorded before arming.
 
-A single architect may remain the final authority in a small instance. The
-required separation is between proposal and approval, not an invented second
-human. The approval must be recorded before the policy is armed.
+For high-risk or irreversible policy authority, the human approver must be
+distinct from the executor principal, and the executor must not approve, arm,
+modify, or close its own policy. The policy authoring identity must not be able
+to alter the approved revision or its evidence after approval. A single-architect
+instance may retain one human authority of record; this does not waive the
+independent-review gate or the separation between human approval and execution.
+The reviewer may be an independently scoped agent, but a second prompt in the
+author's execution context is not independent review.
+
+This follows the framework's high-risk independence rule: the executor cannot
+approve its own plan or close its own change. Independent post-action
+verification remains a separate gate and cannot be performed by the executor
+principal.
 
 ### Executor and verifier
 
@@ -454,8 +482,9 @@ executing ↔ held/deferred
   ↓
 verified
 
-any material drift or failed gate → suspended
-suspended → human-approved → armed
+candidate-local unknown or mismatch → held/deferred; no destructive action
+systemic drift, protected-boundary risk, or failed verification → suspended
+suspended → reviewed → human-approved → armed
 retired is terminal
 ```
 
@@ -552,8 +581,9 @@ strictly safer handling path:
 - disposable and protected domains overlap;
 - executor credential reaches an undeclared resource;
 - protected resource appears in a candidate set;
-- stale or unavailable eligibility guard;
-- unknown queue, lock, playback, restore, or replication state;
+- systemic guard source is stale or unavailable;
+- required system-wide queue, lock, playback, restore, or replication state is
+  unknown;
 - missing, duplicate, or contradictory action receipt;
 - after-state does not match the declared result;
 - independent verifier fails or cannot read fresh state;
@@ -562,6 +592,12 @@ strictly safer handling path:
 - service, container, image, or policy-engine version drifts outside the
   approved compatibility range;
 - kill switch cannot be reached and verified.
+
+A candidate-specific stale or unavailable guard defers that candidate without
+suspending unrelated candidates, unless it indicates a systemic source failure
+or protected-boundary risk. A candidate identity mismatch is likewise deferred;
+if it resolves to protected data or demonstrates a systemic crosswalk defect,
+the policy is suspended. No unresolved candidate may be deleted.
 
 Suspension is not a failure of the data; it is a successful containment action.
 The owner then classifies the event, preserves evidence, fixes the cause or
@@ -650,29 +686,37 @@ the user outcome.
 
 ## Compatibility with existing DEEP rules
 
-This proposal extends existing framework documents; it does not replace them.
+This PR is proposal-only. It does not modify or supersede any current DEEP
+normative document, clearance, intent contract, validator, or runtime behavior.
+Until a separate framework-amendment PR is reviewed and accepted, the existing
+CL5 rule remains in force and destructive data operations must stop for human
+execution/approval as currently defined.
 
-- [`00-operating-model.md`](../00-operating-model.md) retains CL0-CL5 and
-  clarifies CL5 policy authority plus bounded execution.
-- [`autonomy-and-antifragility.md`](autonomy-and-antifragility.md) changes
-  "destructive operations always ask before" into "direct or adaptive
-  destructive operations ask before; an armed PBDO may execute and record
-  within its contract."
-- [`decision-boundaries.md`](decision-boundaries.md) continues to require
+If this proposal is accepted, a separate normative amendment must update the
+following documents together and reconcile their wording:
+
+- [`00-operating-model.md`](../00-operating-model.md): retain CL0-CL5 while
+  defining human-only PBDO lifecycle authority and the bounded execution mode.
+- [`autonomy-and-antifragility.md`](autonomy-and-antifragility.md): retain
+  destructive operations under `ask_before` except for execution by an already
+  armed PBDO within its exact contract.
+- [`decision-boundaries.md`](decision-boundaries.md): continue to require
   bounded candidate IDs, freshness, abstention, and a verified executor.
-- [`agent-classes-and-independent-gates.md`](agent-classes-and-independent-gates.md)
-  continues to require separate policy authority, execution, and verification
-  where the risk demands independence.
-- [`reconciliation-contract.md`](reconciliation-contract.md) supplies the
-  evidence and result-state discipline; PBDO adds destructive-action fields.
-- [`infrastructure-operations-workflow.md`](infrastructure-operations-workflow.md)
-  continues to require locks, timeouts, rollback or recovery, and independent
-  verification for automated operations.
+- [`agent-classes-and-independent-gates.md`](agent-classes-and-independent-gates.md):
+  require human policy authority to be distinct from the executor and preserve
+  separate verification and closure gates for high-risk actions.
+- [`reconciliation-contract.md`](reconciliation-contract.md): define the
+  PBDO-specific evidence and result-state fields.
+- [`infrastructure-operations-workflow.md`](infrastructure-operations-workflow.md):
+  require locks, timeouts, recovery, and independent verification for PBDO
+  execution.
 
-An instance must bind its own target domains, identities, secrets, recovery
-thresholds, and user-outcome probes in its operations repository. The
-framework must not contain hostnames, credentials, or instance-specific
-libraries.
+The normative amendment and its machine-readable schema, validator, tests, and
+executor gates must be reviewed as a coherent change. This proposal alone does
+not change those rules. An instance must bind its own target domains, identities,
+secrets, recovery thresholds, and user-outcome probes in its operations
+repository; the framework must not contain hostnames, credentials, or
+instance-specific libraries.
 
 ## Machine-readable follow-up
 
