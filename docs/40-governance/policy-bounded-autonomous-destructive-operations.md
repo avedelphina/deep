@@ -184,14 +184,22 @@ policy representation.
 A minimum contract contains:
 
 ```yaml
+schema: pbdo/v1
 policy_id: stable-policy-identifier
 revision: 7
-state: draft | reviewed | approved | armed | suspended | retired
+policy_state: draft | reviewed | human-approved | armed | suspended | retired
+run_state: not-started | dry-run | executing | held/deferred | terminal
+run_result: none | verified | blocked | mismatch | failed
+state_machine: pbdo-state-machine/v1
 intent_id: active-intent-serving-this-policy
 
 owner:
   accountable_class: business | infrastructure | management | coding
   human_authority: external-instance-binding
+
+author:
+  principal: stable-policy-author-id
+  kind: human | agent
 
 boundary:
   disposable_domain_id: stable-domain-identifier
@@ -229,12 +237,27 @@ recovery:
   evidence_required: [probe-id]
   restore_or_rebuild_path: runbook-or-operation-id
   loss_tradeoff: explicit-human-decision-reference
+  loss_ceiling:
+    max_resources: bounded-count-or-null
+    max_bytes: bounded-bytes-or-null
+    authority_record: explicit-human-decision-reference
 
 approval:
-  approved_by: human-authority-reference
+  approver: validated-human-principal
+  approver_authentication: control-plane-attested
   approved_at: timestamp
   approved_revision_hash: digest
   review_due: timestamp
+  distinct_from: [executor.principal, verification.independent_principal, verification.closure_principal, kill_switch.principal]
+  author_separation: required-unless-author-is-this-human-principal
+
+review:
+  reviewer: stable-independent-reviewer-id
+  execution_context: separate-from-author-and-executor
+  reviewed_revision_hash: digest
+  reviewed_at: timestamp
+  distinct_from: [author.principal, owner.human_authority, approval.approver, executor.principal, verification.independent_principal, verification.closure_principal]
+  no_review_or_closure_overlap: true
 
 executor:
   principal: stable-executor-id
@@ -244,13 +267,30 @@ executor:
   may_expand_scope: false
   may_rearm: false
 
+execution:
+  mode: policy-autonomous
+  max_batch_size: bounded-count
+  parallelism: bounded-count
+  lock_scope: policy | disposable-domain | resource
+  action_timeout: duration
+  retry:
+    max_attempts: bounded-count
+    only_after_reconciliation: true
+    never_retry_for_missing_receipt: true
+
 verification:
   independent_principal: stable-verifier-id
+  closure_principal: stable-verifier-id
+  require_separate_closure_write: true
   probes: [before-state, action-receipt, after-state, user-outcome]
   reconcile_deadline: duration
 
 kill_switch:
   operation_id: disable-and-revoke-executor
+  principal: stable-kill-switch-principal
+  verified_stop_required: true
+  stop_observed_by: stable-independent-observer-id
+  distinct_from: [author.principal, owner.human_authority, approval.approver, review.reviewer, executor.principal, verification.independent_principal, verification.closure_principal]
   triggers: [declared-trigger]
   rearm_requires: human-policy-lifecycle-approval
 
@@ -260,9 +300,18 @@ audit:
   immutable_sink: evidence-destination
 ```
 
-The example is illustrative. An implementation must define a versioned schema,
-reject unknown or missing security-critical fields, and validate the contract
-before it can enter `armed` state.
+`policy_state`, `run_state`, and `run_result` are the three canonical state
+namespaces. They are validated together from the versioned `state_machine`
+registry; prose diagrams and implementation enums must be generated from or
+checked against that same registry. `dry-run`, `executing`, and
+`held/deferred` are run phases, while `verified`, `blocked`, `mismatch`, and
+`failed` are terminal run results. They are not untracked policy lifecycle
+states. An implementation must reject unknown or missing security-critical
+fields and validate all three namespaces before a policy can enter `armed`
+state. The state invariant is strict: `run_result` is `none` for every
+non-terminal `run_state`, and a terminal run has exactly one non-`none`
+`run_result`; a terminal result is immutable and any later attempt gets a new
+run ID.
 
 ## Boundary rules
 
@@ -362,12 +411,14 @@ The affected candidate is held or deferred without destructive action. It is
 not silently dropped from the evidence set, and the policy does not keep
 retrying it against the same stale snapshot.
 
-A candidate-level identity mismatch is held for resolution. If the mismatch
-indicates a protected-domain identity, a path crossing into a protected
-boundary, or a systemic crosswalk/configuration defect, suspend the entire
-policy and block new destructive runs. This distinction prevents one bad item
-from needlessly disabling an otherwise bounded policy while treating evidence
-of boundary failure as a policy-wide incident.
+A candidate-level identity mismatch is held for resolution. If fresh evidence
+shows that the candidate belongs to a protected domain, crosses a protected
+boundary, or exposes a systemic crosswalk/configuration defect, the policy
+transitions to `suspended` and blocks new destructive runs. The hold receipt
+must retain the original mismatch, the candidate fingerprint, and the evidence
+that caused the policy-wide reclassification. This distinction prevents one
+bad item from needlessly disabling an otherwise bounded policy while treating
+evidence of boundary failure as a policy-wide incident.
 
 Unknown blocks destructive execution; it never authorizes a best-effort delete.
 A safe, human-approved handling path may preserve or quarantine the candidate,
@@ -409,6 +460,14 @@ action. A policy may choose a quarantine-first model, but a quarantine is not
 required when the approved recovery model is otherwise credible and the human
 authority has accepted the trade-off.
 
+An `accepted-loss` policy must also record a bounded loss ceiling in the
+approval record, such as a maximum resource count, byte count, value class, or
+other domain-specific blast-radius limit. The executor must refuse an action
+that would exceed that ceiling, and the verifier must reconcile cumulative loss
+against it. A policy revision or fresh human approval is required before the
+ceiling can change; repeated accepted-loss actions must not accumulate
+unbounded loss under one approval.
+
 Protected data must never become eligible merely because it lacks playback,
 is expensive, or has an old timestamp. Its exclusion is a boundary property,
 not a scoring rule.
@@ -425,14 +484,22 @@ operation, recovery model, and dry-run evidence. The human authority of record
 then approves the exact policy revision, target boundary, loss trade-off, and
 action set. The approval must be recorded before arming.
 
+The approval record must contain a control-plane-authenticated human principal,
+not a free-form name or a reference supplied by the policy author. That
+principal must be distinct from the executor, verifier, kill-switch principal,
+and, for a policy authored by an agent or an untrusted automation context, the
+policy author. A single-architect instance may use the same human as author and
+human authority of record only when the author is that authenticated human
+principal; it must still use a separate reviewer, executor, verifier, and
+kill-switch principal. An agent may draft or relay an approval request but may
+not satisfy the human approval field.
+
 For high-risk or irreversible policy authority, the human approver must be
 distinct from the executor principal, and the executor must not approve, arm,
 modify, or close its own policy. The policy authoring identity must not be able
-to alter the approved revision or its evidence after approval. A single-architect
-instance may retain one human authority of record; this does not waive the
-independent-review gate or the separation between human approval and execution.
-The reviewer may be an independently scoped agent, but a second prompt in the
-author's execution context is not independent review.
+to alter the approved revision or its evidence after approval. The reviewer
+may be an independently scoped agent, but a second prompt in the author's
+execution context is not independent review.
 
 This follows the framework's high-risk independence rule: the executor cannot
 approve its own plan or close its own change. Independent post-action
@@ -443,7 +510,12 @@ principal.
 
 The executor and independent verifier use separate principals or execution
 contexts. The verifier must receive a fresh view of target state and must not
-be able to rewrite the executor's receipts.
+be able to rewrite the executor's receipts. The validator must reject a
+contract where `verification.independent_principal` or
+`verification.closure_principal` equals the executor principal, owner human
+authority, or policy author. The `verified` result requires a separate,
+verifier-owned closure write; the executor can submit evidence but cannot mark
+its own receipt verified.
 
 The verifier must independently establish, as appropriate:
 
@@ -463,29 +535,88 @@ conflicting state, and failed verification remain `blocked`, `mismatch`, or
 `failed` until the owner resolves them. A green scheduler is not proof of
 successful destructive work.
 
+## Canonical state registry and transitions
+
+The schema has three deliberately separate state namespaces. `policy_state`
+describes human-owned authority over a policy revision. `run_state` describes
+the current phase of one dry-run or execution attempt. `run_result` records its
+terminal outcome. A run result never grants, changes, or restores policy
+authority.
+
+The canonical `policy_state` transitions are:
+
+| From | To | Required gate |
+| --- | --- | --- |
+| `draft` | `reviewed` | Independent review of the exact revision, boundary, recovery model, and dry-run evidence |
+| `reviewed` | `human-approved` | Authenticated human approver records the exact revision hash and target scope |
+| `human-approved` | `armed` | Startup read-back proves policy, credentials, network scope, and kill switch match the approval |
+| `armed` | `suspended` | Declared systemic failure, protected-boundary risk, failed verification, owner request, or verified kill-switch stop |
+| `armed` | `retired` | Human lifecycle authority retires the exact revision |
+| `suspended` | `reviewed` | Cause is resolved, evidence is refreshed, and a new review is recorded; no direct resume to `armed` |
+| `reviewed` | `draft` | A new revision is created; the prior revision remains immutable |
+
+A policy revision is never advanced by a run result or by the executor. A
+material edit creates a new revision in `draft`; `retired` is terminal.
+
+The canonical `run_state` transitions are:
+
+| From | To | Required gate |
+| --- | --- | --- |
+| `not-started` | `dry-run` | Read-only evaluation starts against a declared policy revision |
+| `not-started` | `executing` | The referenced policy is `armed` and all startup gates pass |
+| `dry-run` | `not-started` | A new dry-run cycle is required after changed inputs or an expired result |
+| `executing` | `held/deferred` | One candidate has unknown, stale, or candidate-local identity evidence; no destructive action occurs |
+| `held/deferred` | `executing` | Fresh candidate evidence passes while the policy remains `armed` |
+| `executing` | `terminal` | The action attempt stops and a verifier records one terminal `run_result` |
+| `terminal` | `not-started` | A new run ID and fresh candidate fingerprint are created; no stale receipt-only retry |
+
+The canonical `run_result` values are emitted only with `run_state: terminal`:
+
+| Result | Required evidence |
+| --- | --- |
+| `verified` | Every expected action and independent postcondition is reconciled |
+| `blocked` | A missing receipt, unavailable required gate, or bounded timeout is recorded and requires reconciliation |
+| `mismatch` | The observed result differs from the declared action or boundary |
+| `failed` | The declared action failed and reconciliation records the failure |
+
+A terminal result is immutable for that run. A new attempt receives a new run ID
+and starts at `not-started`; it may not reuse a stale candidate fingerprint or
+retry solely to obtain a missing receipt. A candidate held locally may later be
+reclassified as policy-wide `suspended` if fresh evidence shows protected data,
+systemic crosswalk failure, or another kill condition. The original hold reason
+and the evidence causing promotion must remain in the receipt.
+
+The lifecycle diagram below is explanatory notation generated from these
+canonical tables; it is not a second state vocabulary.
+
 ## Policy lifecycle
 
-The lifecycle is explicit and monotonic:
+The human-gated policy path is:
 
 ```text
-draft
-  ↓
-dry-run
-  ↓
-reviewed
-  ↓
-human-approved
-  ↓
-armed
-  ↓
-executing ↔ held/deferred
-  ↓
-verified
+draft → reviewed → human-approved → armed
+                                      ↓
+                                  suspended
+                                      ↓
+                         reviewed → human-approved → armed
 
-candidate-local unknown or mismatch → held/deferred; no destructive action
-systemic drift, protected-boundary risk, or failed verification → suspended
-suspended → reviewed → human-approved → armed
-retired is terminal
+armed → retired
+```
+
+Run states may be attached to a declared policy revision during dry-run, and
+execution run states require an `armed` revision. They do not appear as policy
+states: a run result never grants, changes, or restores policy authority.
+
+```text
+not-started → dry-run → not-started
+not-started → executing ↔ held/deferred → terminal
+                                      terminal → not-started (new run ID)
+```
+
+`run_result` is written only at `terminal`:
+
+```text
+terminal + verified | blocked | mismatch | failed
 ```
 
 ### Draft
@@ -519,11 +650,12 @@ The executor can act, but only after all startup gates pass. The control plane
 must read back the live policy, scope, credentials, version, and revision hash
 and compare them with the approval record.
 
-### Executing and verified
+### Executing and run results
 
 Each action is bounded, serialized or concurrency-controlled as declared,
-receipted, and independently reconciled. A run can be verified only when all
-expected actions and postconditions are accounted for.
+receipted, and independently reconciled. `verified` is a verifier-owned run
+result, not a policy state. `held/deferred` is candidate-local unless its
+fresh evidence demonstrates a systemic or protected-boundary condition.
 
 ### Suspended
 
@@ -538,7 +670,9 @@ cannot clear the condition and resume itself.
 
 A generic PBDO transaction is:
 
-1. Load the approved policy and verify its revision hash and state.
+1. Load the approved policy and verify its revision hash and state. A
+   destructive run is admissible only when `policy_state: armed` and its
+   `run_state` starts at `not-started` with `run_result: none`.
 2. Verify executor credential, network scope, service version, and target
    boundary.
 3. Acquire the per-policy or per-domain lock.
@@ -547,7 +681,9 @@ A generic PBDO transaction is:
 6. Execute exactly the declared idempotent operation.
 7. Write an action receipt before releasing the lock.
 8. Run independent after-state and user-outcome probes.
-9. Mark the receipt `verified`, `deferred`, `blocked`, `mismatch`, or `failed`.
+9. Record the terminal `run_result` only with `run_state: terminal`: `verified`,
+   `blocked`, `mismatch`, or `failed`. A candidate that cannot pass its guards
+   remains in `held/deferred` and is not a terminal receipt result.
 10. Suspend the policy when a boundary, receipt, or verification condition
     requires it.
 
@@ -611,7 +747,9 @@ a human authority re-promotes it.
 ## Kill switch
 
 Every PBDO has a kill switch that is independent of the executor's normal UI
-and credentials. It must be able to:
+and credentials. The kill-switch principal is an authenticated, separately
+scoped identity and must be distinct from the policy author, human authority,
+executor, and verifier. It must be able to:
 
 - stop new policy runs;
 - disable the collection handler or scheduler;
@@ -619,6 +757,12 @@ and credentials. It must be able to:
 - block the executor's network path;
 - preserve the current policy and action receipts;
 - report whether the stop was observed and verified.
+
+A kill-switch request is not complete when the control plane merely reports
+success. The switch must record a read-back or independent observation binding
+the stop to the operation and policy revision. `verified_stop_required` is a
+precondition for arming, and the policy suspends when the switch cannot be
+reached or its effect cannot be independently verified.
 
 The kill switch is tested before the policy is armed and at the review cadence.
 An inaccessible kill switch is a precondition failure, not an emergency plan.
@@ -724,17 +868,23 @@ This proposal should not be implemented by adding a free-form operation to the
 current autonomy contract. A follow-up implementation change must:
 
 1. define a versioned PBDO schema separate from ordinary low-risk operations;
-2. extend the validator to reject missing boundary, approval, recovery,
-   verifier, and kill-switch fields;
-3. model policy lifecycle transitions and immutable revision hashes;
-4. enforce `policy-autonomous` execution only for `armed` policies;
-5. reject executor attempts to edit policy or protected-domain data;
-6. validate candidate freshness and exact boundary membership at action time;
-7. emit the policy and action evidence schema;
-8. implement automatic suspension and demotion;
-9. provide an independent kill-switch probe;
-10. add fixtures for boundary overlap, stale state, missing receipt, failed
-    verification, and successful autonomous execution.
+2. publish one canonical registry for `policy_state`, `run_state`, and
+   `run_result`, and drift-check prose, transition tables, and implementation
+   enums against it;
+3. extend the validator to reject missing boundary, approval, review, recovery,
+   verifier, and kill-switch fields, including principal distinctness rules;
+4. model policy lifecycle transitions and immutable revision hashes;
+5. enforce `policy-autonomous` execution only for `armed` policies and require
+   `run_result` only with `run_state: terminal`;
+6. reject executor attempts to edit policy or protected-domain data;
+7. validate candidate freshness and exact boundary membership at action time;
+8. emit the policy, action, phase, result, and principal evidence schema;
+9. implement automatic suspension and demotion, including promotion of a
+   candidate hold to policy suspension on systemic or protected-boundary evidence;
+10. provide an independent kill-switch probe and verified-stop receipt;
+11. add fixtures for boundary overlap, stale state, missing receipt, failed
+    verification, role-overlap rejection, accepted-loss ceiling, and successful
+    autonomous execution.
 
 The existing `infrastructure-autonomy.json` contract must remain unchanged until
 that schema and validator work is accepted. A service may not claim that a
