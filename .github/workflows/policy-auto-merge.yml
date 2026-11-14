@@ -1,0 +1,270 @@
+name: DEEP Policy Auto Merge
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: deep-policy-auto-merge-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  merge-eligible:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_ROOT: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+      BOT_TOKEN: ${{ secrets.DEEP_MERGE_BOT_TOKEN }}
+      CURL_CA_BUNDLE: /certs/step-ca.crt
+    steps:
+      - name: Evaluate and merge eligible pull requests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          command -v curl >/dev/null
+          command -v jq >/dev/null
+          test -n "${BOT_TOKEN:-}"
+          AUTH_HEADER="Authorization: token ${BOT_TOKEN}"
+
+          api_get() {
+            curl --fail-with-body --silent --show-error \
+              --retry 2 --retry-delay 1 \
+              -H "$AUTH_HEADER" \
+              -H "Accept: application/json" \
+              "$1"
+          }
+
+          api_delete() {
+            curl --fail-with-body --silent --show-error \
+              --retry 2 --retry-delay 1 \
+              -X DELETE \
+              -H "$AUTH_HEADER" \
+              -H "Accept: application/json" \
+              -H "Content-Type: application/json" \
+              --data "$2" \
+              "$1"
+          }
+
+          process_pr() {
+            local number="$1"
+            local pr reviews statuses requested missing requested_human
+            local head status_sha context_count success_count bad_states
+            local unknown_states blocking_changes alice_approval payload response_file http_code
+
+            pr="$(api_get "$API_ROOT/pulls/$number")" || {
+              echo "PR #$number: unable to read pull request" >&2
+              return 1
+            }
+
+            if [ "$(jq -r '.state // empty' <<<"$pr")" != "open" ]; then
+              return 0
+            fi
+            if [ "$(jq -r '.base.ref // empty' <<<"$pr")" != "main" ]; then
+              echo "PR #$number: skipped, base is not main"
+              return 0
+            fi
+            if [ "$(jq -r '.draft // false' <<<"$pr")" = "true" ]; then
+              echo "PR #$number: blocked, draft"
+              return 0
+            fi
+            if [ "$(jq -r '.mergeable // false' <<<"$pr")" != "true" ]; then
+              echo "PR #$number: blocked, forge reports not mergeable"
+              return 0
+            fi
+
+            head="$(jq -r '.head.sha // empty' <<<"$pr")"
+            test -n "$head"
+            requested="$(jq '[.requested_reviewers[]?.login] | unique' <<<"$pr")"
+            requested_human="$(jq -r 'map(select(. == "avedelphina")) | join(",")' <<<"$requested")"
+            if [ -n "$requested_human" ]; then
+              echo "PR #$number: blocked, human review requested ($requested_human)"
+              return 0
+            fi
+
+            reviews="$(api_get "$API_ROOT/pulls/$number/reviews?limit=100")" || {
+              echo "PR #$number: unable to read reviews" >&2
+              return 1
+            }
+            unknown_states="$(jq -r '[.[] | .state] | unique | map(select((. == "APPROVED" or . == "PENDING" or . == "COMMENT" or . == "REQUEST_CHANGES" or . == "REQUEST_REVIEW") | not)) | join(",")' <<<"$reviews")"
+            if [ -n "$unknown_states" ]; then
+              echo "PR #$number: blocked, unknown review state(s): $unknown_states" >&2
+              return 0
+            fi
+
+            blocking_changes="$(jq --arg sha "$head" '[.[] | select(.state == "REQUEST_CHANGES" and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
+            if [ "$blocking_changes" -gt 0 ]; then
+              echo "PR #$number: blocked, $blocking_changes current change request(s)"
+              return 0
+            fi
+
+            alice_approval="$(jq --arg sha "$head" '[.[] | select(.user.login == "alice" and .state == "APPROVED" and .official == true and .stale == false and .dismissed == false and .commit_id == $sha)] | length' <<<"$reviews")"
+            if [ "$alice_approval" -eq 0 ]; then
+              echo "PR #$number: blocked, no current official Alice approval"
+              return 0
+            fi
+
+            missing="$(jq -n --argjson requested "$requested" --argjson reviews "$reviews" --arg sha "$head" '
+              $requested
+              | map(select(. as $reviewer |
+                  ([$reviews[]
+                    | select((.user.login // "") == $reviewer
+                      and .state == "APPROVED"
+                      and .official == true
+                      and .stale == false
+                      and .dismissed == false
+                      and .commit_id == $sha)] | length) == 0))
+              | join(",")
+            ')"
+            if [ -n "$missing" ]; then
+              echo "PR #$number: blocked, requested reviewer approval missing: $missing"
+              return 0
+            fi
+
+            # Branch protection treats an outstanding official request as a
+            # blocker. Remove only requests whose reviewer has already supplied
+            # a current official approval; never remove a human request.
+            while IFS= read -r reviewer; do
+              [ -n "$reviewer" ] || continue
+              if [ "$reviewer" = "avedelphina" ]; then
+                echo "PR #$number: blocked, human review request appeared during cleanup"
+                return 0
+              fi
+              cleanup_payload="$(jq -n --arg reviewer "$reviewer" '{reviewers:[$reviewer]}')"
+              if ! api_delete "$API_ROOT/pulls/$number/requested_reviewers" "$cleanup_payload" >/dev/null; then
+                echo "PR #$number: blocked, could not clear completed request for $reviewer" >&2
+                return 1
+              fi
+            done < <(jq -r --arg sha "$head" --argjson reviews "$reviews" '
+              .[] as $reviewer
+              | select(
+                  $reviewer != "avedelphina" and
+                  ([$reviews[] | select(
+                    (.user.login // "") == $reviewer and
+                    .state == "APPROVED" and
+                    .official == true and
+                    .stale == false and
+                    .dismissed == false and
+                    .commit_id == $sha
+                  )] | length) > 0
+                )
+              | $reviewer' <<<"$requested")
+
+            pr="$(api_get "$API_ROOT/pulls/$number")" || {
+              echo "PR #$number: final review-request read failed" >&2
+              return 1
+            }
+            if [ "$(jq -r '.head.sha // empty' <<<"$pr")" != "$head" ]; then
+              echo "PR #$number: head changed while clearing completed requests"
+              return 0
+            fi
+            requested="$(jq '[.requested_reviewers[]?.login] | unique' <<<"$pr")"
+            if [ "$(jq -r 'map(select(. == "avedelphina")) | length' <<<"$requested")" -gt 0 ]; then
+              echo "PR #$number: blocked, human review requested during evaluation"
+              return 0
+            fi
+            if [ "$(jq -r 'length' <<<"$requested")" -gt 0 ]; then
+              echo "PR #$number: blocked, new reviewer request during evaluation"
+              return 0
+            fi
+
+            reviews="$(api_get "$API_ROOT/pulls/$number/reviews?limit=100")" || {
+              echo "PR #$number: final review read failed" >&2
+              return 1
+            }
+            blocking_changes="$(jq --arg sha "$head" '[.[] | select(.state == "REQUEST_CHANGES" and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
+            alice_approval="$(jq --arg sha "$head" '[.[] | select(.user.login == "alice" and .state == "APPROVED" and .official == true and .stale == false and .dismissed == false and .commit_id == $sha)] | length' <<<"$reviews")"
+            if [ "$blocking_changes" -gt 0 ] || [ "$alice_approval" -eq 0 ]; then
+              echo "PR #$number: review state changed during final evaluation"
+              return 0
+            fi
+
+            statuses="$(api_get "$API_ROOT/commits/$head/status?limit=100")" || {
+              echo "PR #$number: unable to read exact-head status" >&2
+              return 1
+            }
+            status_sha="$(jq -r '.sha // empty' <<<"$statuses")"
+            if [ "$status_sha" != "$head" ]; then
+              echo "PR #$number: blocked, status SHA mismatch"
+              return 0
+            fi
+            context_count="$(jq '(.statuses // []) | length' <<<"$statuses")"
+            success_count="$(jq '[.statuses[]? | select(.status == "success")] | length' <<<"$statuses")"
+            bad_states="$(jq -r '[.statuses[]? | select(.status != "success" and .status != "skipped") | (.context // "unknown")] | join(",")' <<<"$statuses")"
+            if [ "$context_count" -eq 0 ]; then
+              echo "PR #$number: blocked, no exact-head CI contexts"
+              return 0
+            fi
+            if [ -n "$bad_states" ]; then
+              echo "PR #$number: blocked, non-green exact-head CI: $bad_states"
+              return 0
+            fi
+            if [ "$success_count" -eq 0 ]; then
+              echo "PR #$number: blocked, no successful exact-head CI context"
+              return 0
+            fi
+
+            pr="$(api_get "$API_ROOT/pulls/$number")" || {
+              echo "PR #$number: final pull request read failed" >&2
+              return 1
+            }
+            if [ "$(jq -r '.state // empty' <<<"$pr")" != "open" ] || [ "$(jq -r '.draft // false' <<<"$pr")" = "true" ]; then
+              echo "PR #$number: changed state during evaluation"
+              return 0
+            fi
+            if [ "$(jq -r '.head.sha // empty' <<<"$pr")" != "$head" ]; then
+              echo "PR #$number: head changed during evaluation"
+              return 0
+            fi
+            requested="$(jq '[.requested_reviewers[]?.login] | unique' <<<"$pr")"
+            if [ "$(jq -r 'length' <<<"$requested")" -gt 0 ]; then
+              echo "PR #$number: reviewer request appeared before merge"
+              return 0
+            fi
+
+            payload="$(jq -n --arg sha "$head" '{do:"squash",head_commit_id:$sha,delete_branch_after_merge:false,merge_when_checks_succeed:false}')"
+            response_file="$(mktemp)"
+            http_code="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+              -X POST \
+              -H "$AUTH_HEADER" \
+              -H "Accept: application/json" \
+              -H "Content-Type: application/json" \
+              --data "$payload" \
+              "$API_ROOT/pulls/$number/merge" || true)"
+            response_body="$(cat "$response_file")"
+            rm -f "$response_file"
+            case "$http_code" in
+              200)
+                pr="$(api_get "$API_ROOT/pulls/$number")" || {
+                  echo "PR #$number: merge submitted but final read failed" >&2
+                  return 1
+                }
+                if [ "$(jq -r '.merged // false' <<<"$pr")" = "true" ]; then
+                  echo "PR #$number: merged by deep-merge-bot at head $head"
+                else
+                  echo "PR #$number: merge endpoint returned 200 but read-back is not merged" >&2
+                  return 1
+                fi
+                ;;
+              405|409)
+                echo "PR #$number: merge raced with another state change (HTTP $http_code); left unmerged"
+                ;;
+              *)
+                echo "PR #$number: merge failed (HTTP $http_code)" >&2
+                printf '%s\n' "$response_body" >&2
+                return 1
+                ;;
+            esac
+          }
+
+          pulls="$(api_get "$API_ROOT/pulls?state=open&base_branch=main&limit=100")" || {
+            echo "Unable to list open pull requests" >&2
+            exit 1
+          }
+          failures=0
+          while IFS= read -r number; do
+            [ -n "$number" ] || continue
+            process_pr "$number" || failures=1
+          done < <(jq -r '.[].number' <<<"$pulls")
+          exit "$failures"
