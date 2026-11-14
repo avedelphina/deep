@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "repository": "OCEAN/deep",
+  "default_branch": "main",
+  "governance_reviewer": "alice",
+  "human_gate": "avedelphina",
+  "merge_executor": "anikke",
+  "human_gate_always": true,
+  "framework_sensitive_paths": [
+    ".github/workflows/deep-intent-review.yml",
+    "config/repository-review-policy.json",
+    "docs/00-operating-model.md",
+    "docs/40-governance/**",
+    "intents/**",
+    "scripts/validate_autonomy_contract.py",
+    "scripts/validate_infrastructure_intent.py",
+    "scripts/validate_intent_catalog.py"
+  ],
+  "reviewer_rules": [
+    {
+      "patterns": [
+        "intents/**",
+        "*infrastructure*"
+      ],
+      "reviewers": ["saga"]
+    }
+  ],
+  "required_conditions": [
+    "alice_exact_head_approved",
+    "tom_exact_head_approved_when_framework_sensitive",
+    "no_official_review_requests",
+    "no_active_exact_head_request_changes",
+    "exact_head_ci_success",
+    "open_non_draft_mergeable"
+  ],
+  "prohibitions": [
+    "self_approval",
+    "force_merge",
+    "runtime_or_credential_authorization"
+  ]
+}

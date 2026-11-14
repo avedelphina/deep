@@ -1,0 +1,25 @@
+name: Repository Review Policy
+
+on:
+  pull_request:
+    paths:
+      - 'config/repository-review-policy.json'
+      - 'scripts/repository_review_gate.py'
+      - 'scripts/test_repository_review_gate.py'
+      - 'scripts/validate_repository_review_policy.py'
+      - 'docs/40-governance/repository-review-policy.md'
+      - 'docs/90-meta/repository-review-policy.md'
+      - '.github/workflows/repository-review-policy.yml'
+    branches: [main]
+
+jobs:
+  validate-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate policy contract
+        run: python3 scripts/validate_repository_review_policy.py
+      - name: Run path-policy tests
+        run: python3 scripts/test_repository_review_gate.py
+      - name: Check changed-tree whitespace
+        run: git diff --check "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
