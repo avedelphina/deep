@@ -1,0 +1,87 @@
+name: DEEP Policy Auto Merge Test
+
+# Validation only.  No forge credentials, reviewer-request writes, or merge
+# endpoint are available to this workflow.  The scheduled mutation workflow
+# remains a separate change and is not activated by this test.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/policy-auto-merge.yml'
+      - '.github/workflows/policy-auto-merge-test.yml'
+      - 'scripts/test_policy_auto_merge.py'
+    branches: [main]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-gate-test:
+    if: >
+      github.event_name == 'pull_request' ||
+      (
+        github.event_name == 'pull_request_review' &&
+        github.event.pull_request.base.ref == 'main' &&
+        github.event.pull_request.head.ref == 'automation/policy-auto-merge'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate workflow source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import shutil
+          import subprocess
+          import tempfile
+          from pathlib import Path
+
+          def run_blocks(path):
+              lines = Path(path).read_text().splitlines()
+              blocks = []
+              for index, line in enumerate(lines):
+                  if not line.endswith('run: |'):
+                      continue
+                  base_indent = len(line) - len(line.lstrip(' '))
+                  block = []
+                  for child in lines[index + 1:]:
+                      if child.strip() and len(child) - len(child.lstrip(' ')) <= base_indent:
+                          break
+                      block.append(child[base_indent + 2:] if child.strip() else '')
+                  blocks.append('\n'.join(block).rstrip() + '\n')
+              return blocks
+
+          for filename in ('.github/workflows/policy-auto-merge.yml',
+                           '.github/workflows/policy-auto-merge-test.yml'):
+              blocks = run_blocks(filename)
+              if not blocks:
+                  raise SystemExit(f'{filename}: no embedded shell blocks found')
+              for block in blocks:
+                  with tempfile.NamedTemporaryFile('w', suffix='.sh') as script:
+                      script.write(block)
+                      script.flush()
+                      subprocess.run(['bash', '-n', script.name], check=True)
+              print(f'{filename}: workflow structure and embedded shell syntax OK')
+          for command in ('curl', 'jq', 'openssl'):
+              if not shutil.which(command):
+                  raise SystemExit(f'missing required test dependency: {command}')
+          PY
+      - name: Run loopback-only exact-head gate tests
+        env:
+          # No GITHUB_TOKEN, DEEP_MERGE_BOT_TOKEN, or repository secret is
+          # passed to this step.  The script creates only a loopback fixture.
+          BOT_TOKEN: ""
+        run: python3 scripts/test_policy_auto_merge.py
+      - name: Confirm review events reevaluate the changed gate
+        if: github.event_name == 'pull_request_review'
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.sha }}" != ""
+          printf 'Review event reevaluated the validation gate for exact head %s.\n' \
+            '${{ github.event.pull_request.head.sha }}'
+          printf 'No reviewer-request or merge mutation is performed by this job.\n'

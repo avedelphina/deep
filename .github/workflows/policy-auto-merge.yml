@@ -93,9 +93,9 @@ jobs:
               return 0
             fi
 
-            blocking_changes="$(jq --arg sha "$head" '[.[] | select(.state == "REQUEST_CHANGES" and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
+            blocking_changes="$(jq --arg sha "$head" '[.[] | select((.state == "REQUEST_CHANGES" or .state == "PENDING" or .state == "REQUEST_REVIEW") and .official == true and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
             if [ "$blocking_changes" -gt 0 ]; then
-              echo "PR #$number: blocked, $blocking_changes current change request(s)"
+              echo "PR #$number: blocked, $blocking_changes current unresolved review(s)"
               return 0
             fi
 
@@ -105,7 +105,7 @@ jobs:
               return 0
             fi
 
-            missing="$(jq -n --argjson requested "$requested" --argjson reviews "$reviews" --arg sha "$head" '
+            missing="$(jq -nr --argjson requested "$requested" --argjson reviews "$reviews" --arg sha "$head" '
               $requested
               | map(select(. as $reviewer |
                   ([$reviews[]
@@ -173,7 +173,7 @@ jobs:
               echo "PR #$number: final review read failed" >&2
               return 1
             }
-            blocking_changes="$(jq --arg sha "$head" '[.[] | select(.state == "REQUEST_CHANGES" and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
+            blocking_changes="$(jq --arg sha "$head" '[.[] | select((.state == "REQUEST_CHANGES" or .state == "PENDING" or .state == "REQUEST_REVIEW") and .official == true and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
             alice_approval="$(jq --arg sha "$head" '[.[] | select(.user.login == "alice" and .state == "APPROVED" and .official == true and .stale == false and .dismissed == false and .commit_id == $sha)] | length' <<<"$reviews")"
             if [ "$blocking_changes" -gt 0 ] || [ "$alice_approval" -eq 0 ]; then
               echo "PR #$number: review state changed during final evaluation"
@@ -189,9 +189,10 @@ jobs:
               echo "PR #$number: blocked, status SHA mismatch"
               return 0
             fi
-            context_count="$(jq '(.statuses // []) | length' <<<"$statuses")"
-            success_count="$(jq '[.statuses[]? | select(.status == "success")] | length' <<<"$statuses")"
-            bad_states="$(jq -r '[.statuses[]? | select(.status != "success" and .status != "skipped") | (.context // "unknown")] | join(",")' <<<"$statuses")"
+            sibling_statuses="$(jq --arg gate_context 'DEEP Policy Auto Merge / merge-eligible' '[.statuses[]? | select((.context // "") != $gate_context)]' <<<"$statuses")"
+            context_count="$(jq 'length' <<<"$sibling_statuses")"
+            success_count="$(jq '[.[] | select(.status == "success")] | length' <<<"$sibling_statuses")"
+            bad_states="$(jq -r '[.[] | select(.status != "success" and .status != "skipped") | (.context // "unknown")] | join(",")' <<<"$sibling_statuses")"
             if [ "$context_count" -eq 0 ]; then
               echo "PR #$number: blocked, no exact-head CI contexts"
               return 0
@@ -220,6 +221,32 @@ jobs:
             requested="$(jq '[.requested_reviewers[]?.login] | unique' <<<"$pr")"
             if [ "$(jq -r 'length' <<<"$requested")" -gt 0 ]; then
               echo "PR #$number: reviewer request appeared before merge"
+              return 0
+            fi
+            reviews="$(api_get "$API_ROOT/pulls/$number/reviews?limit=100")" || {
+              echo "PR #$number: final pre-merge review read failed" >&2
+              return 1
+            }
+            unknown_states="$(jq -r '[.[] | .state] | unique | map(select((. == "APPROVED" or . == "PENDING" or . == "COMMENT" or . == "REQUEST_CHANGES" or . == "REQUEST_REVIEW") | not)) | join(",")' <<<"$reviews")"
+            blocking_changes="$(jq --arg sha "$head" '[.[] | select((.state == "REQUEST_CHANGES" or .state == "PENDING" or .state == "REQUEST_REVIEW") and .official == true and .commit_id == $sha and .stale == false and .dismissed == false)] | length' <<<"$reviews")"
+            alice_approval="$(jq --arg sha "$head" '[.[] | select(.user.login == "alice" and .state == "APPROVED" and .official == true and .stale == false and .dismissed == false and .commit_id == $sha)] | length' <<<"$reviews")"
+            if [ -n "$unknown_states" ] || [ "$blocking_changes" -gt 0 ] || [ "$alice_approval" -eq 0 ]; then
+              echo "PR #$number: review state changed before merge"
+              return 0
+            fi
+            statuses="$(api_get "$API_ROOT/commits/$head/status?limit=100")" || {
+              echo "PR #$number: final exact-head status read failed" >&2
+              return 1
+            }
+            if [ "$(jq -r '.sha // empty' <<<"$statuses")" != "$head" ]; then
+              echo "PR #$number: final status SHA mismatch"
+              return 0
+            fi
+            sibling_statuses="$(jq --arg gate_context 'DEEP Policy Auto Merge / merge-eligible' '[.statuses[]? | select((.context // "") != $gate_context)]' <<<"$statuses")"
+            if [ "$(jq 'length' <<<"$sibling_statuses")" -eq 0 ] || \
+               [ "$(jq '[.[] | select(.status == "success")] | length' <<<"$sibling_statuses")" -eq 0 ] || \
+               [ "$(jq '[.[] | select(.status != "success" and .status != "skipped")] | length' <<<"$sibling_statuses")" -gt 0 ]; then
+              echo "PR #$number: exact-head CI changed before merge"
               return 0
             fi
 
