@@ -10,21 +10,12 @@ on:
       - '.github/workflows/policy-auto-merge-test.yml'
       - 'scripts/test_policy_auto_merge.py'
     branches: [main]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
 
 permissions:
   contents: read
 
 jobs:
   controlled-gate-test:
-    if: >
-      github.event_name == 'pull_request' ||
-      (
-        github.event_name == 'pull_request_review' &&
-        github.event.pull_request.base.ref == 'main' &&
-        github.event.pull_request.head.ref == 'automation/policy-auto-merge'
-      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -77,11 +68,3 @@ jobs:
           # passed to this step.  The script creates only a loopback fixture.
           BOT_TOKEN: ""
         run: python3 scripts/test_policy_auto_merge.py
-      - name: Confirm review events reevaluate the changed gate
-        if: github.event_name == 'pull_request_review'
-        run: |
-          set -euo pipefail
-          test "${{ github.event.pull_request.head.sha }}" != ""
-          printf 'Review event reevaluated the validation gate for exact head %s.\n' \
-            '${{ github.event.pull_request.head.sha }}'
-          printf 'No reviewer-request or merge mutation is performed by this job.\n'

@@ -205,6 +205,18 @@ def execute(workflow, name, *, changes=None, token=VALID_TOKEN,
     return result
 
 
+def validate_production_auth_source(path):
+    """Assert the committed workflow binds the runtime token into its header."""
+    lines = path.read_text().splitlines()
+    auth_lines = [line for line in lines if "AUTH_HEADER=" in line]
+    expected_auth = '          AUTH_HEADER="Authorization: token ${BOT_TOKEN}"'
+    assert auth_lines == [expected_auth], auth_lines
+    token_lines = [line for line in lines if line.startswith("      BOT_TOKEN:")]
+    assert token_lines == ["      BOT_TOKEN: ${{ secrets.DEEP_MERGE_BOT_TOKEN }}"], token_lines
+    assert any('test -n "${BOT_TOKEN:-}"' in line for line in lines)
+    print("production auth source: BOT_TOKEN expansion is present")
+
+
 def workflow_run_blocks(path):
     lines = path.read_text().splitlines()
     blocks = []
@@ -236,6 +248,7 @@ def main():
     blocks = workflow_run_blocks(args.workflow)
     assert len(blocks) == 1, "the gate must remain one self-contained tested shell block"
     workflow = blocks[0]
+    validate_production_auth_source(args.workflow.parent / "policy-auto-merge.yml")
     cases = [
         ("placeholder is rejected", {"token": "***", "changes": {"pulls": [{"number": PR}]},
           "expect_exit": 1, "expect_output": ""}),
