@@ -22,9 +22,36 @@ jobs:
           GH_MIRROR_TOKEN: ${{ secrets.GH_MIRROR_TOKEN }}
         run: |
           set -euo pipefail
+          command -v curl >/dev/null
+          command -v jq >/dev/null
+          test -n "${GH_MIRROR_TOKEN:-}"
+
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          GITHUB_REPO="avedelphina/${REPO_NAME}"
           SRC="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
-          DST="https://x-access-token:${GH_MIRROR_TOKEN}@github.com/avedelphina/${REPO_NAME}.git"
+          DST="https://x-access-token:${GH_MIRROR_TOKEN}@github.com/${GITHUB_REPO}.git"
+          API="https://api.github.com/repos/${GITHUB_REPO}"
+          AUTH_HEADER="Authorization: Bearer ${GH_MIRROR_TOKEN}"
+
+          # The destination is a receive-only mirror. Keep copied Gitea
+          # workflows inert on GitHub before publishing any new refs.
+          curl --fail-with-body --silent --show-error \
+            -X PUT \
+            -H "$AUTH_HEADER" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            -H 'Content-Type: application/json' \
+            --data '{"enabled":false}' \
+            "$API/actions/permissions" >/dev/null
+          actions_enabled="$(curl --fail-with-body --silent --show-error \
+            -H "$AUTH_HEADER" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "$API/actions/permissions" | jq -r '.enabled // true')"
+          if [ "$actions_enabled" != "false" ]; then
+            echo "GitHub Actions is not disabled for ${GITHUB_REPO}; refusing to mirror" >&2
+            exit 1
+          fi
 
           git clone --bare --quiet "$SRC" repo.git
           cd repo.git
@@ -35,5 +62,5 @@ jobs:
             '+refs/heads/*:refs/heads/*' \
             '+refs/tags/*:refs/tags/*'
 
-          echo "mirrored ${GITHUB_REPOSITORY} -> github.com/avedelphina/${REPO_NAME}"
+          echo "mirrored ${GITHUB_REPOSITORY} -> github.com/${GITHUB_REPO}"
           git ls-remote "$DST" main | cut -c1-12 | sed 's/^/github main: /'
