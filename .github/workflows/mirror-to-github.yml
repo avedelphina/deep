@@ -7,7 +7,6 @@ name: Mirror to GitHub
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 concurrency:
   group: mirror-github-${{ github.repository }}
@@ -47,7 +46,7 @@ jobs:
             -H "$AUTH_HEADER" \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "$API/actions/permissions" | jq -r '.enabled // true')"
+            "$API/actions/permissions" | jq -r 'if .enabled == false then "false" else "true" end')"
           if [ "$actions_enabled" != "false" ]; then
             echo "GitHub Actions is not disabled for ${GITHUB_REPO}; refusing to mirror" >&2
             exit 1
