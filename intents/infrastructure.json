@@ -35,7 +35,22 @@
     "owner": "infrastructure-operator",
     "blocked_after_hours": 24,
     "critical_after_minutes": 30,
-    "required_fields": ["reason", "unblock_action", "unblock_owner", "deadline", "evidence_ref"]
+    "required_fields": [
+      "decision_request",
+      "target",
+      "operation",
+      "clearance",
+      "consequence",
+      "why_policy_cannot_decide",
+      "options",
+      "recommendation",
+      "rollback_or_containment",
+      "impact_of_delay",
+      "uncertainty",
+      "unblock_owner",
+      "deadline",
+      "evidence_ref"
+    ]
   },
   "evidence": {
     "required_fields": ["intent_id", "intent_version", "target", "operation", "actor", "started_at", "finished_at", "before", "after", "probes", "result"],

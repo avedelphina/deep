@@ -126,17 +126,18 @@ exceeds its judgement reaches a human authority.
 | **CL1** | Propose | Agents prepare changes as proposals (PR, plan, runbook, ticket). No execution. | config PRs, capacity plans, incident postmortems |
 | **CL2** | Execute reversible | Agents execute low-risk, reversible changes autonomously; notify after. | service restarts, cert renewals, doc publishing, cache clears |
 | **CL3** | Execute with senior-agent approval | A higher-capability agent ("methodical skeptic") reviews the staged change for risk, then approves, rejects, or escalates to CL4. For changes where a human cannot honestly measure risk but a stronger model can. | package upgrades, dependency updates, routine rollouts |
-| **CL4** | Execute with human approval | Agents prepare and stage; a **human authority of record** approves; agents may execute and verify. In a single-architect instance that authority is the architect. In a multi-human instance it is whoever the authority matrix names for that object class. | config rollouts, new service deploys, DNS changes |
-| **CL5** | Human-only | A human authority executes personally. Agents may prepare, never run. | credential rotation, payment/subscription changes, destructive data ops, hardware decommission |
+| **CL4** | Execute with human approval | Agents prepare and stage; the human/operator responsible for the affected agent or resource approves. Fleet-wide, cross-owner, identity, authority, or kill-chain changes route to the fleet operator named by the instance authority binding; agents may execute and verify after approval. | config rollouts, new service deploys, DNS changes |
+| **CL5** | Human-only | A human executes personally. Agents may prepare, independently review, and verify; an optional duet never replaces the required human action. Resource-scoped work routes to the affected agent's human/operator; fleet-wide, cross-owner, and highest-risk work routes to the fleet operator. | credential rotation, payment/subscription changes, destructive data ops, hardware decommission |
 
 **Human ladder above the agent ceiling:** CL0–CL3 are the agent-usable band
 (with CL3 still gated by the Methodical Skeptic function). **CL4 and above are
 human clearances.** A larger organisation may insert additional *human-only* rungs
 above CL4 (e.g. engagement lead → firm architect → CEO/legal) without minting
 new agent powers — those rungs refine *which human* must approve or execute,
-not what an agent may do alone. A single-architect instance collapses the
-human ladder to one person; the spine keeps the ladder extensible.
-
+not what an agent may do alone. A single-architect instance may map both the
+resource owner and fleet operator to one person, but that is an instance
+binding, not a generic CL4/CL5 rule. See
+`40-governance/clearance-routing.md` for subject resolution and exception packets.
 Escalation: an agent that hits a boundary above its clearance mid-task stops,
 reports, and waits. The Methodical Skeptic escalates to the relevant human
 authority whenever its confidence is insufficient — never guesses at approval.

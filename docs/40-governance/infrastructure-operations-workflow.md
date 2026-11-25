@@ -50,7 +50,20 @@ Every intent declares:
 - permitted automation and escalation;
 - reporting and evidence requirements.
 
-A change to the intent is a PR. The infrastructure operator is the required operational reviewer. CI must identify the affected probes, schedules, hosts, thresholds, and runbooks; the operator does not need to reread the entire repository every day.
+For any exception or clearance above CL2, the intent also declares the target
+subject and owner route. Use the generic routing vocabulary in
+`clearance-routing.md`; an instance binds the actual principals. An exception
+record must be understandable without reading the control-plane internals and
+must include `decision_request`, `target`, `operation`, `clearance`,
+`consequence`, `why_policy_cannot_decide`, `options`, `recommendation`,
+`rollback_or_containment`, `impact_of_delay`, `uncertainty`, `deadline`, and
+`evidence_ref`. Transport IDs and revision hashes remain audit evidence, not
+substitutes for the decision request.
+The infrastructure operator is the required operational reviewer for the
+infrastructure intent itself. That role is not automatically the CL4 approver
+or CL5 executor: the target-owner route in
+`40-governance/clearance-routing.md` and the instance authority binding decide
+which human is asked.
 
 ## 5. Normal operating loop
 

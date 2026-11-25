@@ -88,6 +88,8 @@ action class; clean history promotes it. Full model:
   — Authoritative management/documentation class and boundaries.
 - [`docs/40-governance/decision-boundaries.md`](docs/40-governance/decision-boundaries.md)
   — how agent decisions are bounded before any action executes.
+- [`docs/40-governance/clearance-routing.md`](docs/40-governance/clearance-routing.md)
+  — target-owner resolution, CL4/CL5 human routing, and plain-language exception packets.
 - [`services/example-service/`](services/example-service/) — a fictional
   worked example of a service fulfilment folder.
 
