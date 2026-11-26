@@ -5,8 +5,8 @@
 
 ## Purpose
 
-DEEP's clearance model (operating model §4) governs *actions*: what an agent may
-observe, propose, and execute. This document governs the step just before
+DEEP's clearance model (operating model §4) routes decision authority across
+the action pipeline: what an agent may observe, propose, and execute. This document governs the step just before
 action — the **decision**, where an agent (or a model acting as selector)
 chooses what to do next.
 
@@ -128,7 +128,8 @@ control.
 
 ## Relationship to clearances and gates
 
-- **Clearances (CL0–CL5)** bound *what may be executed and by whom*.
+- **Clearances (CL0–CL5)** route *decision authority; execution permission is
+  granted separately by the exact operation binding*.
 - **Classes and independent gates** bound *who may approve, execute, and
   close*.
 - **Decision boundaries** bound *how a choice is produced and validated
