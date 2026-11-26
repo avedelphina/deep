@@ -8,7 +8,9 @@ from typing import NoReturn
 
 REQUIRED = {"intent_id", "contract_version", "status", "routing", "success_probes", "operations"}
 CLEARANCE_LADDER = {"CL0", "CL1", "CL2", "CL3", "CL4", "CL5"}
-FIELDS = {"id", "clearance", "target_scope", "owner_route", "executor", "independent_verifier", "exception_policy", "normal_autonomy", "notify_after", "ask_before", "stop_conditions", "rollback", "verification", "idempotent"}
+FIELDS = {"id", "clearance", "decision_authority", "target_scope", "owner_route", "executor", "independent_verifier", "exception_policy", "normal_autonomy", "notify_after", "ask_before", "stop_conditions", "rollback", "verification", "idempotent"}
+DECISION_AUTHORITIES = {"standing-delegation", "methodical-skeptic", "affected-agent-human-or-resource-owner", "instance-governance-authority"}
+EXECUTOR_BINDINGS = {"declared-agent", "human-only", "deterministic-service"}
 ROUTING_ROLES = {"affected_agent_human", "affected_resource_owner", "fleet_operator", "methodical_skeptic"}
 FLEET_SCOPE_VALUES = {"fleet-wide", "cross-owner", "identity", "authority", "kill-chain"}
 
@@ -48,8 +50,14 @@ def main() -> int:
         fail("CL3 reviewer must be methodical_skeptic")
     if rules["CL4"].get("fleet_override") != "fleet_operator":
         fail("CL4 fleet_override must be fleet_operator")
-    if rules["CL5"].get("agent_execution") != "forbidden":
-        fail("CL5 agent_execution must be forbidden")
+    if rules["CL4"].get("decision_authority") != "affected-agent-human-or-resource-owner":
+        fail("CL4 decision_authority must be affected-agent-human-or-resource-owner")
+    if rules["CL4"].get("execution") != "operation-binding":
+        fail("CL4 execution must be resolved from the operation binding")
+    if rules["CL5"].get("decision_authority") != "instance-defined":
+        fail("CL5 decision_authority must be instance-defined")
+    if rules["CL5"].get("execution") != "operation-binding":
+        fail("CL5 execution must be resolved from the operation binding")
     if rules["CL5"].get("duet") != "prepare-review-verify-only":
         fail("CL5 duet must be prepare-review-verify-only")
 
@@ -75,21 +83,27 @@ def main() -> int:
         for key in ("ask_before", "stop_conditions", "verification"):
             if not isinstance(operation[key], list):
                 fail(f"operation {operation['id']} field {key} must be a list")
-        if not isinstance(operation["owner_route"], str) or not operation["owner_route"]:
-            fail(f"operation {operation['id']} owner_route must be non-empty")
-        if not isinstance(operation["executor"], str) or not operation["executor"]:
-            fail(f"operation {operation['id']} executor must be non-empty")
-        if not isinstance(operation["independent_verifier"], str) or not operation["independent_verifier"]:
-            fail(f"operation {operation['id']} independent_verifier must be non-empty")
-        if not isinstance(operation["exception_policy"], str) or not operation["exception_policy"]:
-            fail(f"operation {operation['id']} exception_policy must be non-empty")
-        if operation["clearance"] == "CL5" and operation["executor"] != "human-only":
-            fail(f"operation {operation['id']} CL5 executor must be human-only")
-        if operation["clearance"] == "CL4" and operation["owner_route"] not in {"affected-agent-human", "affected-resource-owner", "fleet-operator"}:
-            fail(f"operation {operation['id']} CL4 owner_route must resolve to an affected owner or fleet-operator")
+        for key in ("owner_route", "executor", "independent_verifier", "exception_policy"):
+            if not isinstance(operation[key], str) or not operation[key]:
+                fail(f"operation {operation['id']} {key} must be non-empty")
+        if not isinstance(operation["decision_authority"], str) or not operation["decision_authority"]:
+            fail(f"operation {operation['id']} decision_authority must be non-empty")
+        if operation["decision_authority"] not in DECISION_AUTHORITIES:
+            fail(f"operation {operation['id']} decision_authority must be one of: {', '.join(sorted(DECISION_AUTHORITIES))}")
+        if operation["executor"] not in EXECUTOR_BINDINGS:
+            fail(f"operation {operation['id']} executor must be one of: {', '.join(sorted(EXECUTOR_BINDINGS))}")
+        if operation["clearance"] == "CL5" and operation["decision_authority"] != "instance-governance-authority":
+            fail(f"operation {operation['id']} CL5 decision_authority must be instance-governance-authority")
+        if operation["clearance"] == "CL4":
+            if operation["decision_authority"] != "affected-agent-human-or-resource-owner":
+                fail(f"operation {operation['id']} CL4 decision_authority must be affected-agent-human-or-resource-owner")
+            if operation["owner_route"] not in {"affected-agent-human", "affected-resource-owner", "fleet-operator"}:
+                fail(f"operation {operation['id']} CL4 owner_route must resolve to an affected owner or fleet-operator")
         if operation["clearance"] == "CL3" and operation["independent_verifier"] != "methodical-skeptic":
             fail(f"operation {operation['id']} CL3 independent_verifier must be methodical-skeptic")
         if operation["normal_autonomy"]:
+            if operation["executor"] == "human-only":
+                fail(f"operation {operation['id']} cannot be normal_autonomy with human-only executor")
             if operation["clearance"] != "CL2":
                 fail(f"operation {operation['id']} has normal autonomy but clearance {operation['clearance']} (only CL2 may act first)")
             for key in ("ask_before", "stop_conditions", "verification"):

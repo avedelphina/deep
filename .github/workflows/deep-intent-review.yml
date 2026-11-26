@@ -12,9 +12,14 @@ on:
       - 'docs/40-governance/autonomy-stress-record.md'
       - 'docs/40-governance/reconciliation-contract.md'
       - 'docs/40-governance/clearance-routing.md'
-      - 'intents/infrastructure-autonomy.json'
+      - 'docs/40-governance/execution-authority.md'
+      - 'docs/40-governance/incident-response.md'
       - 'scripts/validate_autonomy_contract.py'
       - 'scripts/test_clearance_routing.py'
+      - 'scripts/validate_incident_envelope.py'
+      - 'intents/incident-envelope.example.json'
+      - 'intents/incident-activation.example.json'
+      - 'intents/infrastructure-autonomy.json'
       - '.github/workflows/deep-intent-review.yml'
     branches: [main]
   push:
@@ -28,9 +33,14 @@ on:
       - 'docs/40-governance/autonomy-stress-record.md'
       - 'docs/40-governance/reconciliation-contract.md'
       - 'docs/40-governance/clearance-routing.md'
-      - 'intents/infrastructure-autonomy.json'
+      - 'docs/40-governance/execution-authority.md'
+      - 'docs/40-governance/incident-response.md'
       - 'scripts/validate_autonomy_contract.py'
       - 'scripts/test_clearance_routing.py'
+      - 'scripts/validate_incident_envelope.py'
+      - 'intents/incident-envelope.example.json'
+      - 'intents/incident-activation.example.json'
+      - 'intents/infrastructure-autonomy.json'
       - '.github/workflows/deep-intent-review.yml'
     branches: [main]
 
@@ -43,7 +53,9 @@ jobs:
         run: python3 scripts/validate_infrastructure_intent.py intents/infrastructure.json
       - name: Validate autonomy contract
         run: python3 scripts/validate_autonomy_contract.py intents/infrastructure-autonomy.json
-      - name: Test clearance routing rejection cases
+      - name: Validate incident envelope example
+        run: python3 scripts/validate_incident_envelope.py intents/incident-envelope.example.json intents/incident-activation.example.json intents/infrastructure-autonomy.json --at 2099-12-31T12:30:00Z
+      - name: Test clearance routing and incident envelope rejection cases
         run: python3 scripts/test_clearance_routing.py
       - name: Validate intent catalog
         run: python3 scripts/validate_intent_catalog.py intents/intent-catalog.json
@@ -58,6 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Summarise affected infrastructure contract
         run: |
           echo 'Changed infrastructure intent or fulfilment documents:'

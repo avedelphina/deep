@@ -1,0 +1,59 @@
+{
+  "mode": "incident_response",
+  "schema_version": 1,
+  "status": "example-not-active",
+  "envelope_id": "deep-example-containment",
+  "revision": "rev-2026-11-26T000000Z",
+  "signature_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "preauthorising_authorities": ["instance-authority-a"],
+  "accountable_owner_ids": ["service-owner-a"],
+  "activation_eligibility": ["agent-activator-a", "agent-commander-a"],
+  "commander_eligibility": ["agent-commander-a"],
+  "executor_eligibility": ["agent-executor-a"],
+  "host_operator_eligibility": ["agent-host-operator-a"],
+  "trigger_conditions": ["declared-service-health-failure"],
+  "target_ids": ["service/example"],
+  "allowed_operation_ids": ["restart_affected_service"],
+  "incident_playbooks": [
+    {
+      "operation_id": "restart_affected_service",
+      "revision": "restart-playbook-v1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "operation_bindings": [
+    {
+      "operation_id": "restart_affected_service",
+      "target_revision": "service/example-state-rev-001",
+      "accountable_owner_id": "service-owner-a",
+      "decision_authority_id": "instance-authority-a",
+      "host_operator_id": "agent-host-operator-a",
+      "activator_may_execute": false,
+      "target_ids": ["service/example"],
+      "executor_eligibility": ["agent-executor-a"],
+      "playbook_revision": "restart-playbook-v1",
+      "playbook_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "verifier": "agent-operation-verifier-a",
+      "rollback_or_safe_stop": "restore-previous-service-state-or-stop",
+      "evidence_sink": "local-incident-receipts",
+      "not_before": "2026-11-26T00:00:00Z",
+      "expires_at": "2100-01-01T00:00:00Z"
+    }
+  ],
+  "max_blast_radius": "one-declared-service",
+  "max_action_count": 1,
+  "max_rate": "one action per activation",
+  "stop_conditions": ["target-mismatch", "rollback-unproven", "verification-failure"],
+  "explicit_exclusions": ["other-targets", "credential-changes", "policy-changes"],
+  "rollback_or_safe_stop": "restore-previous-service-state-or-stop",
+  "required_local_capabilities": ["registered-restart-playbook", "append-only-receipt-sink"],
+  "network_dependency": "reconciliation-only",
+  "purser_dependency": "none",
+  "trusted_time_source": "local-trusted-time",
+  "not_before": "2026-11-26T00:00:00Z",
+  "expires_at": "2100-01-01T00:00:00Z",
+  "replay_guard": "deep-example-replay-counter",
+  "local_evidence_sink": "local-incident-receipts",
+  "reconciliation_route": "Mantis-and-Beacon-when-reachable",
+  "verification": ["fresh-health-probe", "primary-user-workflow"]
+}

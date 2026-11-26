@@ -1,7 +1,7 @@
 # Autonomous Operation and Antifragile Improvement
 
 **Status:** Framework v1.0
-**Scope:** How an agent acts inside an active intent, learns from stress, and proposes improvements.
+**Current response mode:** Planned operations and incident response are separate. Use the incident contract for active outages and emergency stabilisation; do not route an urgent containment action through the normal CL4/CL5 approval request.
 
 ## 1. Purpose
 

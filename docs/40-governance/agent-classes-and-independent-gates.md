@@ -148,7 +148,12 @@ service scope, clearance, required gates, and escalation path.
 
 ## Scaling path
 
-The class model is compatible with both host and domain ownership:
+CL5 is an instance-defined governance decision level, not a blanket executor
+restriction. When a policy or action requires CL5, the instance binds the
+accountable decision authority. The operation binding independently specifies
+who may execute, whether agents may execute after that decision, and who must
+verify. Reserved legal, financial, identity, destructive, or contractual steps
+may require a human executor by their own explicit rule.
 
 - At small scale, one agent may own a host end to end while exposing the four
   class profiles internally.

@@ -126,21 +126,30 @@ exceeds its judgement reaches a human authority.
 | **CL1** | Propose | Agents prepare changes as proposals (PR, plan, runbook, ticket). No execution. | config PRs, capacity plans, incident postmortems |
 | **CL2** | Execute reversible | Agents execute low-risk, reversible changes autonomously; notify after. | service restarts, cert renewals, doc publishing, cache clears |
 | **CL3** | Execute with senior-agent approval | A higher-capability agent ("methodical skeptic") reviews the staged change for risk, then approves, rejects, or escalates to CL4. For changes where a human cannot honestly measure risk but a stronger model can. | package upgrades, dependency updates, routine rollouts |
-| **CL4** | Execute with human approval | Agents prepare and stage; the human/operator responsible for the affected agent or resource approves. Fleet-wide, cross-owner, identity, authority, or kill-chain changes route to the fleet operator named by the instance authority binding; agents may execute and verify after approval. | config rollouts, new service deploys, DNS changes |
-| **CL5** | Human-only | A human executes personally. Agents may prepare, independently review, and verify; an optional duet never replaces the required human action. Resource-scoped work routes to the affected agent's human/operator; fleet-wide, cross-owner, and highest-risk work routes to the fleet operator. | credential rotation, payment/subscription changes, destructive data ops, hardware decommission |
+| **CL4** | Resource/agent-owner decision authority | The human accountable for the affected agent or resource decides when a decision is required. Fleet-wide, cross-owner, identity, authority, or kill-chain decisions route to the instance fleet authority. Execution remains separately constrained by the execution-authority binding. | scoped service or resource changes outside standing delegation |
+| **CL5** | Instance/fleet governance decision authority | The highest decision authority defined by the instance decides fleet-wide or reserved governance matters. CL5 identifies who decides; it does not require that person to perform the implementation. | fleet-wide governance, control-plane policy, highest-risk reserved decisions |
 
-**Human ladder above the agent ceiling:** CL0–CL3 are the agent-usable band
-(with CL3 still gated by the Methodical Skeptic function). **CL4 and above are
-human clearances.** A larger organisation may insert additional *human-only* rungs
-above CL4 (e.g. engagement lead → firm architect → CEO/legal) without minting
-new agent powers — those rungs refine *which human* must approve or execute,
-not what an agent may do alone. A single-architect instance may map both the
-resource owner and fleet operator to one person, but that is an instance
-binding, not a generic CL4/CL5 rule. See
-`40-governance/clearance-routing.md` for subject resolution and exception packets.
-Escalation: an agent that hits a boundary above its clearance mid-task stops,
-reports, and waits. The Methodical Skeptic escalates to the relevant human
-authority whenever its confidence is insufficient — never guesses at approval.
+Clearance governs decision authority; it does not, by itself, grant execution
+permission. The proposer, accountable decision-maker, executor, and verifier
+are separate roles and may be distinct principals. Each instance binds both
+its decision-routing matrix and its allowed-executor matrix. A larger
+organisation may define additional decision levels above CL5; those refine
+which authority must decide and do not automatically change which agents may
+execute an approved operation. See `40-governance/clearance-routing.md` for
+decision routing and `40-governance/execution-authority.md` for execution
+constraints.
+
+Incidents use a separate command workflow, not a higher clearance or a bypass
+of this ladder. A pre-authorised, time-bounded incident envelope can permit
+specific responders to contain and recover named targets without waiting for
+planned-change approval. Actions outside the envelope return to normal decision
+and execution policy. See `40-governance/incident-response.md`.
+
+Escalation: an agent that reaches a decision boundary stops only the action
+outside its standing intent or active incident grant, reports the specific
+trade-off, and routes it to the accountable authority. The Methodical Skeptic
+escalates when its evidence or confidence is insufficient — never guesses at
+approval.
 
 **Demotion:** any failed autonomous action auto-demotes that action class one
 clearance until a human authority re-promotes it. **Not all agents are created

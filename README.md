@@ -61,9 +61,13 @@ them — stay distinct:
 
 Every action class maps to exactly one clearance: **CL0** observe (read-only),
 **CL1** propose (PRs/plans, no execution), **CL2** execute reversible changes,
-**CL3** execute with senior-agent approval (the "Methodical Skeptic" gate),
-**CL4** execute with human approval, **CL5** human-only. Failures demote an
-action class; clean history promotes it. Full model:
+**CL3** execute with Methodical Skeptic review, **CL4** decision by the affected
+agent's human/operator or resource owner, and **CL5** decision by the instance's
+highest defined governance authority. Clearance selects decision authority;
+it does not select the executor. The exact operation binding controls who may
+execute after a decision, including whether that operation is agent-executable
+or requires a human executor. Failures demote an action class; clean history
+promotes it. Full model:
 [`docs/00-operating-model.md`](docs/00-operating-model.md) §4.
 
 ## Core documents
@@ -89,7 +93,12 @@ action class; clean history promotes it. Full model:
 - [`docs/40-governance/decision-boundaries.md`](docs/40-governance/decision-boundaries.md)
   — how agent decisions are bounded before any action executes.
 - [`docs/40-governance/clearance-routing.md`](docs/40-governance/clearance-routing.md)
-  — target-owner resolution, CL4/CL5 human routing, and plain-language exception packets.
+  — target-owner resolution, CL4/CL5 decision routing, and plain-language exception packets.
+- [`docs/40-governance/execution-authority.md`](docs/40-governance/execution-authority.md)
+  — operation- and target-scoped executor eligibility, verification, and reserved human steps.
+- [`docs/40-governance/incident-response.md`](docs/40-governance/incident-response.md)
+  — the separate incident-command, temporary-authority, containment, handoff,
+  and post-incident review contract.
 - [`services/example-service/`](services/example-service/) — a fictional
   worked example of a service fulfilment folder.
 

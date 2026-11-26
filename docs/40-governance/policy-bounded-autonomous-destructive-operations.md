@@ -12,7 +12,9 @@ explicitly disposable data domain.
 
 The path must allow an approved retention or lifecycle policy to perform
 routine deletion without a per-item human approval queue, while keeping direct,
-adaptive, unbounded, or policy-changing destructive actions human-only.
+adaptive, unbounded, or policy-changing destructive actions under the bound
+decision authority, executed only through their exact operation binding,
+human-only where that binding requires it.
 
 The proposed model is:
 
@@ -112,13 +114,16 @@ independent verification status.
 
 ## Proposed clearance clarification
 
-The clearance ladder remains CL0 through CL5. The proposal adds an execution
-mode orthogonal to the ladder rather than creating a lower clearance for
-deletion.
+The clearance ladder remains CL0 through CL5. It determines who must decide a
+trade-off; it does not by itself determine who can execute the resulting
+operation. The exact operation and policy binding control execution. The
+proposal adds a bounded execution mode orthogonal to the decision ladder rather
+than creating a lower decision clearance for deletion.
 
-### Policy lifecycle is CL5
+### Policy lifecycle is CL5 decision authority
 
-The following remain human-only CL5 decisions:
+The following policy decisions require the instance's CL5 decision authority;
+execution remains constrained by the exact operation binding:
 
 - creating a PBDO;
 - approving its first revision;
@@ -154,26 +159,30 @@ If any term cannot be evaluated, execution stops. The executor must not fall
 back to a broader credential, an inferred path, a guessed identity, or a
 manual free-form action.
 
-### Direct destructive operations stay CL5
+### Direct destructive operations require the bound decision authority
 
 A one-off deletion, an adaptive cleanup decision, a model-generated target,
-an operation outside an armed PBDO, or an action after policy drift remains a
-CL5 human-only operation. A ticket, a high confidence score, a dry-run match,
-or a previous approval does not convert it into policy execution.
+an operation outside an armed PBDO, or an action after policy drift must be
+routed to the decision authority specified by the instance for that operation.
+Where that operation is bound to CL5, the instance's CL5 authority decides;
+the executor must still be explicitly permitted by the operation binding. A
+ticket, a high confidence score, a dry-run match, or a previous approval does
+not convert it into policy execution.
 
 ### Proposed amendment to the clearance table
 
 The CL5 row in `docs/00-operating-model.md` should be clarified as follows:
 
-> **CL5 - Human-only policy authority.** The human authority creates, approves,
-> arms, changes, widens, overrides, and re-arms destructive or otherwise
-> high-impact policies. Direct or adaptive destructive operations remain
-> human-only. A deterministic executor may carry out an already armed,
-> policy-bounded destructive operation only through the PBDO contract; it may
-> not choose, broaden, or re-arm that contract.
+> **CL5 - Instance-defined decision authority.** The authority at the instance's
+> CL5 level decides the reserved policy matter. The operation binding separately
+> identifies any permitted executor, verifier, and required human-only steps.
+> A deterministic executor may carry out an already armed, policy-bounded
+> operation only through the PBDO contract; it may not choose, broaden, or
+> re-arm that contract.
 
-The existing CL0-CL4 meanings do not change. PBDO execution must never be
-presented as a general promotion of destructive data work to CL2.
+CL0-CL5 determine decision routing; the exact operation binding determines
+permitted execution. PBDO execution must never be presented as a general
+promotion of destructive data work to CL2.
 
 ## PBDO contract
 
@@ -920,7 +929,8 @@ policy.
 The framework amendment is ready for adoption only when:
 
 - the clearance table distinguishes policy authority from policy execution;
-- direct and adaptive destructive operations remain human-only;
+- direct and adaptive destructive decisions route to the bound decision
+  authority, with human-only execution where the operation binding requires it;
 - PBDO lifecycle states, required fields, and approval semantics are defined;
 - protected-domain and exact-boundary requirements are enforceable;
 - policy execution cannot edit or widen its own authority;
